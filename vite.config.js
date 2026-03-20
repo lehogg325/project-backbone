@@ -23,14 +23,11 @@ const SECURITY_HEADERS = {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: '/project-backbone/',
+  base: mode === 'development' ? '/' : '/project-backbone/',
   build: {
     // Generate source maps in development only; omit in production builds
     // to avoid exposing implementation details publicly.
     sourcemap: mode === 'development',
-  },
-  server: {
-    headers: SECURITY_HEADERS,
   },
   preview: {
     headers: SECURITY_HEADERS,

@@ -1366,7 +1366,7 @@ function toggleLayer(id) {
               <span style={{ color: '#00c8ff' }}>Project Backbone</span> makes it visible.
             </div>
             <img
-              src="/logomark-white.png"
+              src={`${import.meta.env.BASE_URL}logomark-white.png`}
               alt="Project Backbone"
               style={{
                 height: 'clamp(32px, 3.5vw, 54px)',
