@@ -277,6 +277,14 @@ export default function App() {
 
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const issFlyDone = useRef(false);
+
+  // Lazy-load tracking — prevent re-fetching when a layer is toggled off then back on
+  const dcFetchedRef           = useRef(false);
+  const cellFetchedRef         = useRef(false);
+  const fiberFetchedRef        = useRef(false);
+  const groundStationFetchedRef = useRef(false);
+  const dnsFetchedRef          = useRef(false);
+  const cdnFetchedRef          = useRef(false);
   const [taglineVisible, setTaglineVisible] = useState(true);
   const [taglineMounted, setTaglineMounted] = useState(true);
 
@@ -318,7 +326,22 @@ export default function App() {
     return () => window.removeEventListener('mousedown', dismiss);
   }, []);
 
+  // Eagerly load only what's visible on startup (cables needs landing-points for
+  // connection arcs; ixps is small and feeds the info-panel count).
   useEffect(() => {
+    const base = import.meta.env.BASE_URL;
+    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
+    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
+      const features = safeFeatures(d);
+      setLandingPointFeatures(features);
+      setLandingPointCount(features.length);
+    }).catch(console.error);
+  }, []);
+
+  // Lazy: data centers — 1.5 MB, only needed when layer is on
+  useEffect(() => {
+    if (!layerVisibility.datacenters || dcFetchedRef.current) return;
+    dcFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
     fetch(`${base}data-centers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
@@ -326,25 +349,54 @@ export default function App() {
       setDcNetworkTotal(features.reduce((s, f) => s + (f.properties.network_count || 0), 0));
       setDcCountryCount(new Set(features.map(f => f.properties.country).filter(Boolean)).size);
     }).catch(console.error);
-    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
+  }, [layerVisibility.datacenters]);
+
+  // Lazy: cell towers — 18 MB, only needed when layer is on
+  useEffect(() => {
+    if (!layerVisibility.cellTowers || cellFetchedRef.current) return;
+    cellFetchedRef.current = true;
+    const base = import.meta.env.BASE_URL;
     fetch(`${base}cell_towers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setCellFeatures(features);
       setCellTowerCount(features.length);
       setCellSiteCount(features.reduce((s, f) => s + (f.properties.count || 0), 0));
-    }).catch(() => {}); // graceful if file doesn't exist yet
-    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
-      const features = safeFeatures(d);
-      setLandingPointFeatures(features);
-      setLandingPointCount(features.length);
-    }).catch(console.error);
-    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
-    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
-    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
-    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
+    }).catch(() => {});
+  }, [layerVisibility.cellTowers]);
+
+  // Lazy: fiber routes — 2.2 MB each, only needed when fiber layer is on
+  useEffect(() => {
+    if (!layerVisibility.fiber || fiberFetchedRef.current) return;
+    fiberFetchedRef.current = true;
+    const base = import.meta.env.BASE_URL;
     fetch(`${base}fiber-routes-verified.geojson`).then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(() => {});
     fetch(`${base}fiber-routes-estimated.geojson`).then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(() => {});
-  }, []);
+  }, [layerVisibility.fiber]);
+
+  // Lazy: ground stations — only needed when layer is on
+  useEffect(() => {
+    if (!layerVisibility.groundStations || groundStationFetchedRef.current) return;
+    groundStationFetchedRef.current = true;
+    const base = import.meta.env.BASE_URL;
+    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
+  }, [layerVisibility.groundStations]);
+
+  // Lazy: DNS — only needed when layer is on
+  useEffect(() => {
+    if (!layerVisibility.dns || dnsFetchedRef.current) return;
+    dnsFetchedRef.current = true;
+    const base = import.meta.env.BASE_URL;
+    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
+  }, [layerVisibility.dns]);
+
+  // Lazy: CDN — only needed when layer is on
+  useEffect(() => {
+    if (!layerVisibility.cdn || cdnFetchedRef.current) return;
+    cdnFetchedRef.current = true;
+    const base = import.meta.env.BASE_URL;
+    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
+  }, [layerVisibility.cdn]);
 
   // Index arrays for satellite ScatterplotLayers — recreated each tick when snapshot changes
   const starlinkData = useMemo(
@@ -746,7 +798,7 @@ export default function App() {
     // ── Terrestrial backbone (estimated) ─────────────────────
     new GeoJsonLayer({
       id: 'backbone',
-      data: `${import.meta.env.BASE_URL}backbone.geojson`,
+      data: layerVisibility.backbone ? `${import.meta.env.BASE_URL}backbone.geojson` : [],
       visible: layerVisibility.backbone,
       onDataLoad: data => {
         setBackboneCount(data.features?.length ?? 0);
