@@ -16,6 +16,36 @@ function safeFeatures(d) {
   return Array.isArray(d?.features) ? d.features : [];
 }
 
+/**
+ * Fetch wrapper that logs the URL, response status, CSP headers, and any
+ * errors to the console. Temporary debugging aid for GitHub Pages diagnosis.
+ */
+async function debugFetch(url) {
+  console.log(`[fetch] → ${url}`);
+  let r;
+  try {
+    r = await fetch(url);
+  } catch (err) {
+    console.error(`[fetch] NETWORK ERROR ${url}`, err);
+    throw err;
+  }
+  const csp = r.headers.get('content-security-policy');
+  const ct  = r.headers.get('content-type');
+  const cl  = r.headers.get('content-length');
+  console.log(
+    `[fetch] ← ${url} | status: ${r.status} ${r.statusText}` +
+    ` | content-type: ${ct}` +
+    (cl ? ` | size: ${(parseInt(cl) / 1024).toFixed(1)} KB` : '') +
+    (csp ? ` | CSP: ${csp}` : ''),
+  );
+  if (!r.ok) {
+    const err = new Error(`HTTP ${r.status} ${r.statusText}: ${url}`);
+    console.error(`[fetch] ERROR`, err);
+    throw err;
+  }
+  return r.json();
+}
+
 // ── Icon atlases ───────────────────────────────────────────────────────────────
 // Each is a 32×32 white-on-transparent SVG. deck.gl IconLayer uses mask:true so
 // the white pixels are filled with getColor at render time — one atlas per shape.
@@ -330,8 +360,8 @@ export default function App() {
   // connection arcs; ixps is small and feeds the info-panel count).
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
-    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
+    debugFetch(`${base}ixps.geojson`).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
+    debugFetch(`${base}landing-points.geojson`).then(d => {
       const features = safeFeatures(d);
       setLandingPointFeatures(features);
       setLandingPointCount(features.length);
@@ -343,7 +373,7 @@ export default function App() {
     if (!layerVisibility.datacenters || dcFetchedRef.current) return;
     dcFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}data-centers.geojson`).then(r => r.json()).then(d => {
+    debugFetch(`${base}data-centers.geojson`).then(d => {
       const features = safeFeatures(d);
       setDcFeatures(features);
       setDcNetworkTotal(features.reduce((s, f) => s + (f.properties.network_count || 0), 0));
@@ -356,12 +386,12 @@ export default function App() {
     if (!layerVisibility.cellTowers || cellFetchedRef.current) return;
     cellFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}cell_towers.geojson`).then(r => r.json()).then(d => {
+    debugFetch(`${base}cell_towers.geojson`).then(d => {
       const features = safeFeatures(d);
       setCellFeatures(features);
       setCellTowerCount(features.length);
       setCellSiteCount(features.reduce((s, f) => s + (f.properties.count || 0), 0));
-    }).catch(() => {});
+    }).catch(console.error);
   }, [layerVisibility.cellTowers]);
 
   // Lazy: fiber routes — 2.2 MB each, only needed when fiber layer is on
@@ -369,8 +399,8 @@ export default function App() {
     if (!layerVisibility.fiber || fiberFetchedRef.current) return;
     fiberFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}fiber-routes-verified.geojson`).then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(() => {});
-    fetch(`${base}fiber-routes-estimated.geojson`).then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(() => {});
+    debugFetch(`${base}fiber-routes-verified.geojson`).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(console.error);
+    debugFetch(`${base}fiber-routes-estimated.geojson`).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(console.error);
   }, [layerVisibility.fiber]);
 
   // Lazy: ground stations — only needed when layer is on
@@ -378,7 +408,7 @@ export default function App() {
     if (!layerVisibility.groundStations || groundStationFetchedRef.current) return;
     groundStationFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
+    debugFetch(`${base}ground-stations.geojson`).then(d => setGroundStationFeatures(safeFeatures(d))).catch(console.error);
   }, [layerVisibility.groundStations]);
 
   // Lazy: DNS — only needed when layer is on
@@ -386,8 +416,8 @@ export default function App() {
     if (!layerVisibility.dns || dnsFetchedRef.current) return;
     dnsFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
-    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
+    debugFetch(`${base}dns-root-instances.geojson`).then(d => setDnsRootFeatures(safeFeatures(d))).catch(console.error);
+    debugFetch(`${base}dns-resolvers.geojson`).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(console.error);
   }, [layerVisibility.dns]);
 
   // Lazy: CDN — only needed when layer is on
@@ -395,7 +425,7 @@ export default function App() {
     if (!layerVisibility.cdn || cdnFetchedRef.current) return;
     cdnFetchedRef.current = true;
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
+    debugFetch(`${base}cdn-edge-locations.geojson`).then(d => setCdnFeatures(safeFeatures(d))).catch(console.error);
   }, [layerVisibility.cdn]);
 
   // Index arrays for satellite ScatterplotLayers — recreated each tick when snapshot changes
