@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { panelStyle, Toggle } from './LayerToggle';
+import { panelStyle } from './ui-shared';
+import { Toggle } from './LayerToggle';
 
 const LAYERS = [
   { id: 'iss',            label: 'ISS',                   description: 'Int\'l Space Station · ~420 km' },

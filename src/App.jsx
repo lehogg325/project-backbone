@@ -201,6 +201,8 @@ function computeOrbitPath(satrec) {
     pts.push([lon, lat]);
   }
 
+  if (pts.length === 0) return null;
+
   // Split into segments at antimeridian jumps (>180° lon change)
   const segments = [];
   let seg = [pts[0]];
@@ -296,6 +298,7 @@ export default function App() {
   useEffect(() => {
     if (!issAutoFly || issFlyDone.current || !iss || iss.count === 0) return;
     issFlyDone.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setViewState(v => ({
       ...v,
       longitude: iss.positions[0],
@@ -322,8 +325,8 @@ export default function App() {
       setDcFeatures(features);
       setDcNetworkTotal(features.reduce((s, f) => s + (f.properties.network_count || 0), 0));
       setDcCountryCount(new Set(features.map(f => f.properties.country).filter(Boolean)).size);
-    });
-    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d)));
+    }).catch(console.error);
+    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
     fetch(`${base}cell_towers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setCellFeatures(features);
@@ -334,7 +337,7 @@ export default function App() {
       const features = safeFeatures(d);
       setLandingPointFeatures(features);
       setLandingPointCount(features.length);
-    });
+    }).catch(console.error);
     fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
     fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
     fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
@@ -366,7 +369,7 @@ export default function App() {
       .filter(i => GEO_COMM_KEYWORDS.some(kw => geo.names[i]?.toUpperCase().includes(kw)));
   }, [geo]);
 
-function toggleLayer(id) {
+  function toggleLayer(id) {
     setLayerVisibility(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
@@ -702,7 +705,7 @@ function toggleLayer(id) {
       lineWidthMaxPixels: 3,
       pickable: true,
       onHover: ({ object, x, y }) =>
-        setTooltip(object ? { x, y, type: 'fiber-route', ...object.properties } : null),
+        setTooltip(object ? { x, y, type: 'fiber-route', source: 'verified', ...object.properties } : null),
     }),
 
     // ── Fiber routes: estimated (dashed grey-blue, zoom 3+) ──
@@ -763,7 +766,7 @@ function toggleLayer(id) {
       lineWidthMaxPixels: 4,
       getDashArray: [4, 4],
       dashJustified: true,
-      extensions: [],
+      extensions: [new PathStyleExtension({ dash: true })],
       pickable: false,
     }),
 
@@ -1270,7 +1273,7 @@ function toggleLayer(id) {
                     {tooltip.route_type}
                   </span>
                 )}
-                {tooltip.type === 'verified'
+                {tooltip.source === 'verified'
                   ? <span style={{ color: '#00d2c8', fontSize: 10 }}>verified</span>
                   : <span style={{ color: '#6496aa', fontSize: 10 }}>estimated</span>
                 }

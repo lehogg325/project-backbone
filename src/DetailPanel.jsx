@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const FONT = '"JetBrains Mono", "Fira Code", "Courier New", monospace';
 
