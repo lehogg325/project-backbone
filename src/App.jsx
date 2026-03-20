@@ -316,30 +316,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('/data-centers.geojson').then(r => r.json()).then(d => {
+    const base = import.meta.env.BASE_URL;
+    fetch(`${base}data-centers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setDcFeatures(features);
       setDcNetworkTotal(features.reduce((s, f) => s + (f.properties.network_count || 0), 0));
       setDcCountryCount(new Set(features.map(f => f.properties.country).filter(Boolean)).size);
     });
-    fetch('/ixps.geojson').then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d)));
-    fetch('/cell_towers.geojson').then(r => r.json()).then(d => {
+    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d)));
+    fetch(`${base}cell_towers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setCellFeatures(features);
       setCellTowerCount(features.length);
       setCellSiteCount(features.reduce((s, f) => s + (f.properties.count || 0), 0));
     }).catch(() => {}); // graceful if file doesn't exist yet
-    fetch('/landing-points.geojson').then(r => r.json()).then(d => {
+    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setLandingPointFeatures(features);
       setLandingPointCount(features.length);
     });
-    fetch('/ground-stations.geojson').then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
-    fetch('/dns-root-instances.geojson').then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
-    fetch('/dns-resolvers.geojson').then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
-    fetch('/cdn-edge-locations.geojson').then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
-    fetch('/fiber-routes-verified.geojson').then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(() => {});
-    fetch('/fiber-routes-estimated.geojson').then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}fiber-routes-verified.geojson`).then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}fiber-routes-estimated.geojson`).then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(() => {});
   }, []);
 
   // Index arrays for satellite ScatterplotLayers — recreated each tick when snapshot changes
@@ -557,7 +558,7 @@ function toggleLayer(id) {
     // ── Border brightener ─────────────────────────────────────
     new GeoJsonLayer({
       id: 'borders-bright',
-      data: '/borders.geojson',
+      data: `${import.meta.env.BASE_URL}borders.geojson`,
       stroked: true,
       filled: false,
       getLineColor: [200, 215, 230, 90],
@@ -742,7 +743,7 @@ function toggleLayer(id) {
     // ── Terrestrial backbone (estimated) ─────────────────────
     new GeoJsonLayer({
       id: 'backbone',
-      data: '/backbone.geojson',
+      data: `${import.meta.env.BASE_URL}backbone.geojson`,
       visible: layerVisibility.backbone,
       onDataLoad: data => {
         setBackboneCount(data.features?.length ?? 0);
@@ -769,7 +770,7 @@ function toggleLayer(id) {
     // ── Submarine cables ──────────────────────────────────────
     new GeoJsonLayer({
       id: 'cables',
-      data: '/cables.geojson',
+      data: `${import.meta.env.BASE_URL}cables.geojson`,
       visible: layerVisibility.cables,
       onDataLoad: data => {
         setCableCount(data.features?.length ?? 0);

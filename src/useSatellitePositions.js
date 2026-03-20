@@ -160,15 +160,16 @@ export function useSatellitePositions() {
 
     // ISS is loaded separately so a missing/stale iss-tle.json cannot block
     // Starlink, OneWeb, or GEO from initialising.
+    const base = import.meta.env.BASE_URL;
     Promise.all([
-      loadGroup('/starlink-tle.json',     { maxAgeHours: 48  })
+      loadGroup(`${base}starlink-tle.json`,     { maxAgeHours: 48  })
         .catch(err => { console.error('[TLE] starlink failed to load:', err?.message ?? err); return null; }),
-      loadGroup('/oneweb-tle.json',       { maxAgeHours: 48  })
+      loadGroup(`${base}oneweb-tle.json`,       { maxAgeHours: 48  })
         .catch(err => { console.error('[TLE] oneweb failed to load:', err?.message ?? err);   return null; }),
-      loadGroup('/geo-commsats-tle.json', { maxAgeHours: 168 })
+      loadGroup(`${base}geo-commsats-tle.json`, { maxAgeHours: 168 })
         .catch(err => { console.error('[TLE] geo failed to load:', err?.message ?? err);      return null; }),
       // Kuiper loaded alongside LEO groups; empty file is handled gracefully
-      loadGroup('/kuiper-tle.json',       { maxAgeHours: 48  })
+      loadGroup(`${base}kuiper-tle.json`,       { maxAgeHours: 48  })
         .catch(err => { console.warn('[TLE] kuiper failed to load:', err?.message ?? err); return { names: [], satrecs: [], positions: new Float32Array(0) }; }),
     ]).then(([sl, ow, ge, kp]) => {
       if (cancelled) return;
@@ -229,7 +230,7 @@ export function useSatellitePositions() {
     });
 
     // ── ISS — loaded independently; failure does not affect other groups ──
-    loadGroup('/iss-tle.json', { maxAgeHours: 48 }).then(is => {
+    loadGroup(`${base}iss-tle.json`, { maxAgeHours: 48 }).then(is => {
       if (cancelled) return;
       issGroup.current = is;
       const ic = propagateGroup(is, new Date());
