@@ -108,11 +108,12 @@ function UtcClock() {
   return <span>{h}:{m}:{sec} UTC</span>;
 }
 
-function LayerRow({ layer, on, onToggle }) {
+function LayerRow({ layer, on, onToggle, isMobile }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const timerRef = useRef(null);
 
   function handleMouseEnter() {
+    if (isMobile) return;
     timerRef.current = setTimeout(() => setShowTooltip(true), 1000);
   }
 
@@ -121,12 +122,18 @@ function LayerRow({ layer, on, onToggle }) {
     setShowTooltip(false);
   }
 
+  function handleTap() {
+    if (!isMobile) return;
+    setShowTooltip(v => !v);
+  }
+
   return (
     <div style={{ ...s.row, position: 'relative' }}>
       <div
         style={{ ...s.labelBlock, cursor: 'default' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onClick={handleTap}
       >
         <div style={{ ...s.label, ...(on ? s.labelOn : s.labelOff) }}>
           {layer.label}
@@ -138,12 +145,14 @@ function LayerRow({ layer, on, onToggle }) {
   );
 }
 
-export default function SpaceLayerToggle({ visible, onToggle }) {
+export default function SpaceLayerToggle({ visible, onToggle, isMobile = false }) {
   const [collapsed, setCollapsed] = useState(false);
   const anyOn = LAYERS.some(l => visible[l.id]);
 
+  const mobileOverride = isMobile ? { minWidth: 0, width: '100%', borderRadius: 0, border: 'none', boxShadow: 'none' } : {};
+
   return (
-    <div style={s.panel}>
+    <div style={{ ...s.panel, ...mobileOverride }}>
       <div
         onClick={() => setCollapsed(c => !c)}
         style={{ ...s.title, cursor: 'pointer', marginBottom: collapsed ? 0 : 10 }}
@@ -160,6 +169,7 @@ export default function SpaceLayerToggle({ visible, onToggle }) {
               layer={layer}
               on={visible[layer.id]}
               onToggle={() => onToggle(layer.id)}
+              isMobile={isMobile}
             />
           ))}
 

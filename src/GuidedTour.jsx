@@ -82,12 +82,13 @@ const SUGGESTIONS = [
   },
 ];
 
-const panelStyle = {
+function makePanelStyle(isMobile) {
+  return {
   position: 'absolute',
-  bottom: 28,
+  bottom: isMobile ? 84 : 28,
   left: '50%',
   transform: 'translateX(-50%)',
-  width: 'clamp(300px, 44vw, 520px)',
+  width: isMobile ? 'calc(100vw - 24px)' : 'clamp(300px, 44vw, 520px)',
   background: 'rgba(13, 13, 20, 0.97)',
   border: '1px solid rgba(255, 79, 0, 0.35)',
   borderRadius: 4,
@@ -98,7 +99,8 @@ const panelStyle = {
   backdropFilter: 'blur(10px)',
   boxShadow: '0 8px 40px rgba(0,0,0,0.75), 0 0 24px rgba(255, 79, 0, 0.08)',
   userSelect: 'none',
-};
+  };
+}
 
 function Dots({ total, current }) {
   return (
@@ -128,7 +130,7 @@ function Btn({ onClick, children, primary }) {
         fontSize: 11,
         letterSpacing: '0.14em',
         fontWeight: 600,
-        padding: '7px 16px',
+        padding: '11px 16px',
         borderRadius: 3,
         cursor: 'pointer',
         transition: 'background 0.2s, color 0.2s, border-color 0.2s',
@@ -192,10 +194,10 @@ function Callout({ direction, label, bottom, right }) {
   );
 }
 
-function StepCard({ step, stepIndex, total, onNext, onBack, onSkip }) {
+function StepCard({ step, stepIndex, total, onNext, onBack, onSkip, isMobile }) {
   const isLast = stepIndex === total - 1;
   return (
-    <div style={panelStyle}>
+    <div style={makePanelStyle(isMobile)}>
       <Dots total={total} current={stepIndex} />
       <div style={{
         fontSize: 8,
@@ -240,11 +242,11 @@ function StepCard({ step, stepIndex, total, onNext, onBack, onSkip }) {
   );
 }
 
-function SuggestionCard({ onDone }) {
+function SuggestionCard({ onDone, isMobile }) {
   return (
     <div style={{
-      ...panelStyle,
-      width: 'clamp(300px, 50vw, 580px)',
+      ...makePanelStyle(isMobile),
+      width: isMobile ? 'calc(100vw - 24px)' : 'clamp(300px, 50vw, 580px)',
     }}>
       <div style={{
         fontSize: 8,
@@ -267,7 +269,8 @@ function SuggestionCard({ onDone }) {
         {SUGGESTIONS.map((s, i) => (
           <div key={i} style={{
             display: 'flex',
-            gap: 14,
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? 6 : 14,
             padding: '10px 14px',
             background: 'rgba(255, 79, 0, 0.05)',
             border: '1px solid rgba(255, 79, 0, 0.15)',
@@ -278,7 +281,7 @@ function SuggestionCard({ onDone }) {
               fontWeight: 700,
               color: C.signalOrange,
               letterSpacing: '0.12em',
-              minWidth: 160,
+              minWidth: isMobile ? 0 : 160,
               paddingTop: 1,
             }}>
               {s.label}
@@ -301,7 +304,7 @@ function SuggestionCard({ onDone }) {
   );
 }
 
-export default function GuidedTour({ onSetLayers, onFlyTo, onDone }) {
+export default function GuidedTour({ isMobile = false, onSetLayers, onFlyTo, onDone }) {
   const [step, setStep] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -336,14 +339,14 @@ export default function GuidedTour({ onSetLayers, onFlyTo, onDone }) {
   }
 
   if (showSuggestions) {
-    return <SuggestionCard onDone={finish} />;
+    return <SuggestionCard isMobile={isMobile} onDone={finish} />;
   }
 
   const currentStep = TOUR_STEPS[step];
 
   return (
     <>
-      {currentStep.callout && (
+      {currentStep.callout && !isMobile && (
         <Callout
           direction={currentStep.callout.direction}
           label={currentStep.callout.label}
@@ -358,6 +361,7 @@ export default function GuidedTour({ onSetLayers, onFlyTo, onDone }) {
         onNext={next}
         onBack={back}
         onSkip={finish}
+        isMobile={isMobile}
       />
     </>
   );

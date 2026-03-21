@@ -150,27 +150,30 @@ export function Toggle({ on, onToggle }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      style={{
-        ...s.track,
-        ...(on ? s.trackOn : s.trackOff),
-        ...(hovered ? { opacity: 0.85 } : {}),
-      }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0 }}
       onClick={onToggle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       role="switch"
       aria-checked={on}
     >
-      <div style={{ ...s.thumb, ...(on ? s.thumbOn : s.thumbOff) }} />
+      <div style={{
+        ...s.track,
+        ...(on ? s.trackOn : s.trackOff),
+        ...(hovered ? { opacity: 0.85 } : {}),
+      }}>
+        <div style={{ ...s.thumb, ...(on ? s.thumbOn : s.thumbOff) }} />
+      </div>
     </div>
   );
 }
 
-function LayerRow({ layer, on, onToggle }) {
+function LayerRow({ layer, on, onToggle, isMobile }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const timerRef = useRef(null);
 
   function handleMouseEnter() {
+    if (isMobile) return;
     timerRef.current = setTimeout(() => setShowTooltip(true), 1000);
   }
 
@@ -179,12 +182,18 @@ function LayerRow({ layer, on, onToggle }) {
     setShowTooltip(false);
   }
 
+  function handleTap() {
+    if (!isMobile) return;
+    setShowTooltip(v => !v);
+  }
+
   return (
     <div style={{ ...s.row, position: 'relative' }}>
       <div
         style={{ ...s.labelBlock, cursor: 'default' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onClick={handleTap}
       >
         <div style={{ ...s.label, ...(on ? s.labelOn : s.labelOff) }}>
           {layer.label}
@@ -196,11 +205,13 @@ function LayerRow({ layer, on, onToggle }) {
   );
 }
 
-export default function LayerToggle({ visible, onToggle }) {
+export default function LayerToggle({ visible, onToggle, isMobile = false }) {
   const [collapsed, setCollapsed] = useState(false); // starts open
 
+  const mobileOverride = isMobile ? { minWidth: 0, width: '100%', borderRadius: 0, border: 'none', boxShadow: 'none' } : {};
+
   return (
-    <div style={s.panel}>
+    <div style={{ ...s.panel, ...mobileOverride }}>
       <div
         onClick={() => setCollapsed(c => !c)}
         style={{ ...s.title, cursor: 'pointer', marginBottom: collapsed ? 0 : 10 }}
@@ -217,6 +228,7 @@ export default function LayerToggle({ visible, onToggle }) {
               layer={layer}
               on={visible[layer.id]}
               onToggle={() => onToggle(layer.id)}
+              isMobile={isMobile}
             />
           ))}
         </>

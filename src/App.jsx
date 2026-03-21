@@ -250,6 +250,8 @@ export default function App() {
   const [orbitFeature, setOrbitFeature] = useState(null);
   const [orbitSatInfo, setOrbitSatInfo] = useState(null);
   const [cableFeatures, setCableFeatures] = useState([]);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  const [mobilePanel, setMobilePanel] = useState(null); // 'info' | 'layers' | null
 
   const { starlink, oneweb, geo, iss, kuiper, starlinkGroup, onewebGroup, geoGroup, issGroup, kuiperGroup } = useSatellitePositions();
 
@@ -321,6 +323,12 @@ export default function App() {
     };
     window.addEventListener('mousedown', dismiss, { once: true });
     return () => window.removeEventListener('mousedown', dismiss);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
@@ -971,48 +979,49 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
 
   return (
     <>
-      <InfoPanel
-        cableCount={cableCount}
-        cableMiles={cableMiles}
-        landingPointCount={landingPointCount}
-        dcCount={dcFeatures.length || null}
-        dcNetworkTotal={dcNetworkTotal}
-        dcCountryCount={dcCountryCount}
-        ixpCount={ixpFeatures.length || null}
-        dnsRootCount={dnsRootFeatures.length || null}
-        dnsResolverCount={dnsResolverFeatures.length || null}
-        cdnPopCount={cdnFeatures.length || null}
-        cdnCountryCount={cdnFeatures.length ? new Set(cdnFeatures.map(f => f.properties.country)).size : null}
-        backboneCount={backboneCount}
-        backboneMiles={backboneMiles}
-        cellTowerCount={cellTowerCount}
-        cellSiteCount={cellSiteCount}
-        starlinkCount={starlink?.count ?? null}
-        onewebCount={oneweb?.count ?? null}
-        kuiperCount={kuiper?.count ?? null}
-        geoSatCount={geoData.length || null}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: 62,
-          right: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          zIndex: 10,
-          maxHeight: 'calc(100vh - 82px)',
-          overflowY: 'auto',
-          overflowX: 'visible',
-        }}
-        onWheel={e => e.stopPropagation()}
-      >
-        <LayerToggle
-          visible={layerVisibility}
-          onToggle={toggleLayer}
+      {!isMobile && (
+        <InfoPanel
+          cableCount={cableCount}
+          cableMiles={cableMiles}
+          landingPointCount={landingPointCount}
+          dcCount={dcFeatures.length || null}
+          dcNetworkTotal={dcNetworkTotal}
+          dcCountryCount={dcCountryCount}
+          ixpCount={ixpFeatures.length || null}
+          dnsRootCount={dnsRootFeatures.length || null}
+          dnsResolverCount={dnsResolverFeatures.length || null}
+          cdnPopCount={cdnFeatures.length || null}
+          cdnCountryCount={cdnFeatures.length ? new Set(cdnFeatures.map(f => f.properties.country)).size : null}
+          backboneCount={backboneCount}
+          backboneMiles={backboneMiles}
+          cellTowerCount={cellTowerCount}
+          cellSiteCount={cellSiteCount}
+          starlinkCount={starlink?.count ?? null}
+          onewebCount={oneweb?.count ?? null}
+          kuiperCount={kuiper?.count ?? null}
+          geoSatCount={geoData.length || null}
         />
-        <SpaceLayerToggle visible={layerVisibility} onToggle={toggleLayer} />
-      </div>
+      )}
+      {!isMobile && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 62,
+            right: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            zIndex: 10,
+            maxHeight: 'calc(100vh - 82px)',
+            overflowY: 'auto',
+            overflowX: 'visible',
+          }}
+          onWheel={e => e.stopPropagation()}
+        >
+          <LayerToggle visible={layerVisibility} onToggle={toggleLayer} />
+          <SpaceLayerToggle visible={layerVisibility} onToggle={toggleLayer} />
+        </div>
+      )}
 
       <DeckGL
         views={GLOBE_VIEW}
@@ -1032,9 +1041,9 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
         top: 20,
         left: 20,
         fontFamily: MONO_FONT,
-        fontSize: 18,
+        fontSize: isMobile ? 12 : 18,
         fontWeight: 700,
-        letterSpacing: '0.26em',
+        letterSpacing: isMobile ? '0.16em' : '0.26em',
         color: C.lunarWhite,
         textShadow: '0 0 22px rgba(255, 79, 0, 0.55), 0 0 6px rgba(255, 79, 0, 0.25)',
         pointerEvents: 'none',
@@ -1047,8 +1056,79 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
 
       <SourcesPanel />
 
+      {/* ── Mobile bottom nav ───────────────────────────────────────────────── */}
+      {isMobile && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 56,
+          background: 'rgba(13, 13, 20, 0.96)',
+          borderTop: '1px solid rgba(255, 79, 0, 0.2)',
+          display: 'flex', zIndex: 20,
+          backdropFilter: 'blur(8px)',
+        }}>
+          {[['◈ STATS', 'info'], ['◈ LAYERS', 'layers']].map(([label, panel], i) => (
+            <button
+              key={panel}
+              onClick={() => setMobilePanel(p => p === panel ? null : panel)}
+              style={{
+                flex: 1, fontFamily: MONO_FONT, fontSize: 10, letterSpacing: '0.18em',
+                fontWeight: 700, color: mobilePanel === panel ? C.signalOrange : C.photogray,
+                background: 'transparent', border: 'none',
+                borderRight: i === 0 ? '1px solid rgba(255,79,0,0.15)' : 'none',
+                cursor: 'pointer', height: '100%', transition: 'color 0.2s',
+              }}
+            >{label}</button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Mobile bottom sheet ─────────────────────────────────────────────── */}
+      {isMobile && mobilePanel && (
+        <div
+          style={{
+            position: 'absolute', bottom: 56, left: 0, right: 0,
+            maxHeight: '65vh', overflowY: 'auto',
+            background: 'rgba(13, 13, 20, 0.97)',
+            borderTop: '1px solid rgba(255, 79, 0, 0.3)',
+            zIndex: 19,
+          }}
+          onWheel={e => e.stopPropagation()}
+        >
+          {mobilePanel === 'info' && (
+            <InfoPanel
+              mobileSheet
+              cableCount={cableCount}
+              cableMiles={cableMiles}
+              landingPointCount={landingPointCount}
+              dcCount={dcFeatures.length || null}
+              dcNetworkTotal={dcNetworkTotal}
+              dcCountryCount={dcCountryCount}
+              ixpCount={ixpFeatures.length || null}
+              dnsRootCount={dnsRootFeatures.length || null}
+              dnsResolverCount={dnsResolverFeatures.length || null}
+              cdnPopCount={cdnFeatures.length || null}
+              cdnCountryCount={cdnFeatures.length ? new Set(cdnFeatures.map(f => f.properties.country)).size : null}
+              backboneCount={backboneCount}
+              backboneMiles={backboneMiles}
+              cellTowerCount={cellTowerCount}
+              cellSiteCount={cellSiteCount}
+              starlinkCount={starlink?.count ?? null}
+              onewebCount={oneweb?.count ?? null}
+              kuiperCount={kuiper?.count ?? null}
+              geoSatCount={geoData.length || null}
+            />
+          )}
+          {mobilePanel === 'layers' && (
+            <>
+              <LayerToggle isMobile visible={layerVisibility} onToggle={toggleLayer} />
+              <SpaceLayerToggle isMobile visible={layerVisibility} onToggle={toggleLayer} />
+            </>
+          )}
+        </div>
+      )}
+
       {startTourNow && (
         <GuidedTour
+          isMobile={isMobile}
           onSetLayers={setLayerVisibility}
           onFlyTo={flyToLocation}
           onDone={() => setStartTourNow(false)}
@@ -1063,7 +1143,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
         return (
           <div style={{
             position: 'absolute',
-            bottom: orbitSatInfo ? 86 : 18,
+            bottom: (orbitSatInfo ? 86 : 18) + (isMobile ? 56 : 0),
             left: '50%',
             transform: 'translateX(-50%)',
             fontFamily: MONO_FONT,
@@ -1084,7 +1164,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
       {orbitSatInfo && (
         <div style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: isMobile ? 72 : 24,
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(13, 13, 20, 0.94)',
@@ -1097,7 +1177,9 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
-          gap: 28,
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          gap: isMobile ? 14 : 28,
+          maxWidth: isMobile ? 'calc(100vw - 32px)' : 'none',
           boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 14px rgba(255, 79, 0, 0.06)',
           backdropFilter: 'blur(8px)',
           userSelect: 'none',
@@ -1298,8 +1380,8 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
       {!issConsentAsked && iss?.count > 0 && (
         <div style={{
           position: 'absolute',
-          bottom: 24,
-          right: 24,
+          bottom: isMobile ? 72 : 24,
+          right: isMobile ? 12 : 24,
           background: 'rgba(13, 13, 20, 0.94)',
           border: '1px solid rgba(255, 79, 0, 0.28)',
           borderRadius: 4,
@@ -1318,12 +1400,14 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
           <button onClick={() => confirmIssAutoFly(true)} style={{
             background: 'rgba(255, 79, 0, 0.12)', border: '1px solid rgba(255, 79, 0, 0.4)',
             borderRadius: 3, color: C.signalOrange, cursor: 'pointer', fontSize: 12,
-            fontFamily: MONO_FONT, padding: '3px 10px', letterSpacing: '0.08em',
+            fontFamily: MONO_FONT, padding: isMobile ? '12px 20px' : '3px 10px', letterSpacing: '0.08em',
+            minHeight: 44,
           }}>YES</button>
           <button onClick={() => confirmIssAutoFly(false)} style={{
             background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 3, color: C.photogray, cursor: 'pointer', fontSize: 12,
-            fontFamily: MONO_FONT, padding: '3px 10px', letterSpacing: '0.08em',
+            fontFamily: MONO_FONT, padding: isMobile ? '12px 20px' : '3px 10px', letterSpacing: '0.08em',
+            minHeight: 44,
           }}>NO</button>
         </div>
       )}
@@ -1367,7 +1451,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
               }}>Project Backbone</span> makes it visible.
             </div>
             <div style={{ borderTop: '1px solid rgba(255, 79, 0, 0.18)', width: '100%', pointerEvents: 'none' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(32px, 5vw, 72px)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 'clamp(32px, 5vw, 72px)' }}>
               <button
                 onClick={() => setStartTourNow(true)}
                 style={{

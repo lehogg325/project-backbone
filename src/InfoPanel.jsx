@@ -204,6 +204,7 @@ function Counter({ value, hex, suffix = '' }) {
 // ── InfoPanel ─────────────────────────────────────────────────────────────────
 
 export default function InfoPanel({
+  mobileSheet = false,
   cableCount,
   cableMiles,
   landingPointCount,
@@ -244,8 +245,14 @@ export default function InfoPanel({
   const mTotal    = allLoaded
                     ? mCables + mBackbone + mIXP + mDC + mCDN + mDNS + mCell + mSats : null;
 
+  const mobileSheetOverride = mobileSheet ? {
+    position: 'relative', top: 'auto', left: 'auto',
+    width: '100%', minWidth: 0, borderRadius: 0,
+    border: 'none', boxShadow: 'none', maxHeight: 'none',
+  } : { maxHeight: collapsed ? 'none' : 'calc(100vh - 82px)' };
+
   return (
-    <div style={{ ...styles.panel, maxHeight: collapsed ? 'none' : 'calc(100vh - 82px)' }}
+    <div style={{ ...styles.panel, ...mobileSheetOverride }}
          onWheel={e => e.stopPropagation()}>
       <div
         onClick={() => setCollapsed(c => !c)}
