@@ -140,7 +140,7 @@ function LayerRow({ layer, on, onToggle, isMobile }) {
         </div>
         {showTooltip && <div style={tooltipPopStyle}>{layer.tooltip}</div>}
       </div>
-      <Toggle on={on} onToggle={onToggle} />
+      <Toggle on={on} onToggle={onToggle} isMobile={isMobile} />
     </div>
   );
 }

@@ -146,24 +146,39 @@ function HoverTooltip({ text }) {
   return <div style={tooltipPopStyle}>{text}</div>;
 }
 
-export function Toggle({ on, onToggle }) {
+export function Toggle({ on, onToggle, isMobile }) {
   const [hovered, setHovered] = useState(false);
+  const inner = (
+    <div style={{
+      ...s.track,
+      ...(on ? s.trackOn : s.trackOff),
+      ...(hovered ? { opacity: 0.85 } : {}),
+    }}>
+      <div style={{ ...s.thumb, ...(on ? s.thumbOn : s.thumbOff) }} />
+    </div>
+  );
+  if (isMobile) {
+    return (
+      <div
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0 }}
+        onClick={onToggle}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        role="switch"
+        aria-checked={on}
+      >{inner}</div>
+    );
+  }
   return (
     <div
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0 }}
+      style={{ ...s.track, ...(on ? s.trackOn : s.trackOff), ...(hovered ? { opacity: 0.85 } : {}) }}
       onClick={onToggle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       role="switch"
       aria-checked={on}
     >
-      <div style={{
-        ...s.track,
-        ...(on ? s.trackOn : s.trackOff),
-        ...(hovered ? { opacity: 0.85 } : {}),
-      }}>
-        <div style={{ ...s.thumb, ...(on ? s.thumbOn : s.thumbOff) }} />
-      </div>
+      <div style={{ ...s.thumb, ...(on ? s.thumbOn : s.thumbOff) }} />
     </div>
   );
 }
@@ -200,7 +215,7 @@ function LayerRow({ layer, on, onToggle, isMobile }) {
         </div>
         {showTooltip && <HoverTooltip text={layer.tooltip} />}
       </div>
-      <Toggle on={on} onToggle={onToggle} />
+      <Toggle on={on} onToggle={onToggle} isMobile={isMobile} />
     </div>
   );
 }
