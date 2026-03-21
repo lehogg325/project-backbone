@@ -7,8 +7,10 @@ import { PathStyleExtension } from '@deck.gl/extensions';
 import InfoPanel from './InfoPanel';
 import LayerToggle from './LayerToggle';
 import SpaceLayerToggle from './SpaceLayerToggle';
-import DetailPanel from './DetailPanel';
+import SourcesPanel from './SourcesPanel';
+import GuidedTour from './GuidedTour';
 import { useSatellitePositions } from './useSatellitePositions';
+import { MONO_FONT, C } from './ui-shared';
 import * as sat from 'satellite.js';
 
 /** Return features array only if d looks like a valid FeatureCollection. */
@@ -140,17 +142,17 @@ function dcRadius(networkCount) {
 
 const tooltipStyle = {
   position: 'absolute',
-  background: 'rgba(8, 12, 22, 0.92)',
-  color: '#d0eeff',
+  background: 'rgba(13, 13, 20, 0.95)',
+  color: C.lunarWhite,
   padding: '8px 12px',
-  borderRadius: 6,
+  borderRadius: 4,
   fontSize: 13,
   pointerEvents: 'none',
-  border: '1px solid rgba(80, 200, 255, 0.25)',
+  border: '1px solid rgba(255, 79, 0, 0.3)',
   maxWidth: 240,
   lineHeight: 1.6,
-  fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
-  boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+  fontFamily: MONO_FONT,
+  boxShadow: '0 4px 20px rgba(0,0,0,0.6), 0 0 12px rgba(255, 79, 0, 0.06)',
 };
 
 function lineKm(coords) {
@@ -239,7 +241,6 @@ export default function App() {
   const [cellTowerCount, setCellTowerCount] = useState(null);
   const [cellSiteCount, setCellSiteCount] = useState(null);
   const [landingPointFeatures, setLandingPointFeatures] = useState([]);
-  const [detailFeature, setDetailFeature] = useState(null);
   const [groundStationFeatures, setGroundStationFeatures] = useState([]);
   const [dnsRootFeatures, setDnsRootFeatures] = useState([]);
   const [dnsResolverFeatures, setDnsResolverFeatures] = useState([]);
@@ -248,6 +249,7 @@ export default function App() {
   const [fiberEstimatedFeatures, setFiberEstimatedFeatures] = useState([]);
   const [orbitFeature, setOrbitFeature] = useState(null);
   const [orbitSatInfo, setOrbitSatInfo] = useState(null);
+  const [cableFeatures, setCableFeatures] = useState([]);
 
   const { starlink, oneweb, geo, iss, kuiper, starlinkGroup, onewebGroup, geoGroup, issGroup, kuiperGroup } = useSatellitePositions();
 
@@ -279,15 +281,9 @@ export default function App() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const issFlyDone = useRef(false);
 
-  // Lazy-load tracking — prevent re-fetching when a layer is toggled off then back on
-  const dcFetchedRef           = useRef(false);
-  const cellFetchedRef         = useRef(false);
-  const fiberFetchedRef        = useRef(false);
-  const groundStationFetchedRef = useRef(false);
-  const dnsFetchedRef          = useRef(false);
-  const cdnFetchedRef          = useRef(false);
   const [taglineVisible, setTaglineVisible] = useState(true);
   const [taglineMounted, setTaglineMounted] = useState(true);
+  const [startTourNow, setStartTourNow] = useState(false);
 
   // ISS auto-fly consent — persisted to localStorage so returning visitors aren't asked again
   const [issAutoFly, setIssAutoFly] = useState(
@@ -327,77 +323,43 @@ export default function App() {
     return () => window.removeEventListener('mousedown', dismiss);
   }, []);
 
-  // Eagerly load only what's visible on startup (cables needs landing-points for
-  // connection arcs; ixps is small and feeds the info-panel count).
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
-    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
-    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
+    fetch(`${base}cables.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
-      setLandingPointFeatures(features);
-      setLandingPointCount(features.length);
+      setCableFeatures(features);
+      setCableCount(features.length);
+      const totalKm = features.reduce((sum, f) => {
+        const lines = f.geometry?.coordinates || [];
+        return sum + lines.reduce((s, line) => s + lineKm(line), 0);
+      }, 0);
+      setCableMiles(Math.round(totalKm * 0.621371));
     }).catch(console.error);
-  }, []);
-
-  // Lazy: data centers — 1.5 MB, only needed when layer is on
-  useEffect(() => {
-    if (!layerVisibility.datacenters || dcFetchedRef.current) return;
-    dcFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
     fetch(`${base}data-centers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setDcFeatures(features);
       setDcNetworkTotal(features.reduce((s, f) => s + (f.properties.network_count || 0), 0));
       setDcCountryCount(new Set(features.map(f => f.properties.country).filter(Boolean)).size);
     }).catch(console.error);
-  }, [layerVisibility.datacenters]);
-
-  // Lazy: cell towers — 18 MB, only needed when layer is on
-  useEffect(() => {
-    if (!layerVisibility.cellTowers || cellFetchedRef.current) return;
-    cellFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
+    fetch(`${base}ixps.geojson`).then(r => r.json()).then(d => setIxpFeatures(safeFeatures(d))).catch(console.error);
     fetch(`${base}cell_towers.geojson`).then(r => r.json()).then(d => {
       const features = safeFeatures(d);
       setCellFeatures(features);
       setCellTowerCount(features.length);
       setCellSiteCount(features.reduce((s, f) => s + (f.properties.count || 0), 0));
+    }).catch(() => {}); // graceful if file doesn't exist yet
+    fetch(`${base}landing-points.geojson`).then(r => r.json()).then(d => {
+      const features = safeFeatures(d);
+      setLandingPointFeatures(features);
+      setLandingPointCount(features.length);
     }).catch(console.error);
-  }, [layerVisibility.cellTowers]);
-
-  // Lazy: fiber routes — 2.2 MB each, only needed when fiber layer is on
-  useEffect(() => {
-    if (!layerVisibility.fiber || fiberFetchedRef.current) return;
-    fiberFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
-    fetch(`${base}fiber-routes-verified.geojson`).then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(console.error);
-    fetch(`${base}fiber-routes-estimated.geojson`).then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(console.error);
-  }, [layerVisibility.fiber]);
-
-  // Lazy: ground stations — only needed when layer is on
-  useEffect(() => {
-    if (!layerVisibility.groundStations || groundStationFetchedRef.current) return;
-    groundStationFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
-    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(console.error);
-  }, [layerVisibility.groundStations]);
-
-  // Lazy: DNS — only needed when layer is on
-  useEffect(() => {
-    if (!layerVisibility.dns || dnsFetchedRef.current) return;
-    dnsFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
-    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(console.error);
-    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(console.error);
-  }, [layerVisibility.dns]);
-
-  // Lazy: CDN — only needed when layer is on
-  useEffect(() => {
-    if (!layerVisibility.cdn || cdnFetchedRef.current) return;
-    cdnFetchedRef.current = true;
-    const base = import.meta.env.BASE_URL;
-    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(console.error);
-  }, [layerVisibility.cdn]);
+    fetch(`${base}ground-stations.geojson`).then(r => r.json()).then(d => setGroundStationFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}dns-root-instances.geojson`).then(r => r.json()).then(d => setDnsRootFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}dns-resolvers.geojson`).then(r => r.json()).then(d => setDnsResolverFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}cdn-edge-locations.geojson`).then(r => r.json()).then(d => setCdnFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}fiber-routes-verified.geojson`).then(r => r.json()).then(d => setFiberVerifiedFeatures(safeFeatures(d))).catch(() => {});
+    fetch(`${base}fiber-routes-estimated.geojson`).then(r => r.json()).then(d => setFiberEstimatedFeatures(safeFeatures(d))).catch(() => {});
+  }, []);
 
   // Index arrays for satellite ScatterplotLayers — recreated each tick when snapshot changes
   const starlinkData = useMemo(
@@ -442,19 +404,7 @@ export default function App() {
       setFiberZoomed(viewState.zoom >= FIBER_ZOOM_THRESHOLD);
   }
 
-  const CLICK_TYPE = {
-    'cables':         'cable',
-    'landing-points': 'landing-point',
-    'datacenters':    'datacenter',
-    'ixps':           'ixp',
-    'cell-towers':    'cell-tower',
-    'dns-root-points':'dns-root',
-    'dns-resolvers':  'dns-resolver',
-    'fiber-verified': 'fiber-route',
-    'fiber-estimated':'fiber-route',
-  };
-
-  const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats', 'geo-commsats']);
+const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats', 'geo-commsats']);
 
   // ── Connection arcs: cable landing points ↔ nearby fiber endpoints (≤20km) ──
   const connectionArcs = useMemo(() => {
@@ -510,7 +460,6 @@ export default function App() {
 
   function handleMapClick({ object, layer }) {
     if (!object || !layer) {
-      setDetailFeature(null);
       setOrbitFeature(null);
       setOrbitSatInfo(null);
       return;
@@ -518,7 +467,7 @@ export default function App() {
 
     // ── Satellite orbit on click ──────────────────────────────
     if (SAT_LAYERS.has(layer.id)) {
-      const idx = object; // integer index into the group
+      const idx = object;
       let group, groupRef, operator, color;
       if (layer.id === 'iss') {
         group = iss; groupRef = issGroup.current;
@@ -550,46 +499,18 @@ export default function App() {
 
       setOrbitFeature(computeOrbitPath(satrec));
       setOrbitSatInfo({ name, altitude: alt, velocity, inclination, operator, color });
-      setDetailFeature(null);
-      return;
     }
+  }
 
-    // ── CDN click — aggregate nearby PoPs within 50 km ───────
-    if (layer.id === 'cdn-points') {
-      const [cLon, cLat] = object.geometry.coordinates;
-      const nearby = cdnFeatures.filter(f => {
-        const [lon, lat] = f.geometry.coordinates;
-        return haversineKm(cLon, cLat, lon, lat) <= 50;
-      });
-      const byProvider = {};
-      for (const f of nearby) {
-        const p = f.properties.provider;
-        if (!byProvider[p]) byProvider[p] = [];
-        byProvider[p].push(f.properties.city);
-      }
-      const providers = Object.entries(byProvider).map(([name, cities]) => ({
-        name,
-        count: cities.length,
-        cities: [...new Set(cities)].sort(),
-      }));
-      setDetailFeature({
-        type: 'cdn-edge',
-        name: `${object.properties.city}, ${object.properties.country}`,
-        city: object.properties.city,
-        country: object.properties.country,
-        providers,
-      });
-      setOrbitFeature(null);
-      setOrbitSatInfo(null);
-      return;
-    }
-
-    const type = CLICK_TYPE[layer.id];
-    if (type) {
-      setDetailFeature({ type, ...object.properties });
-      setOrbitFeature(null);
-      setOrbitSatInfo(null);
-    }
+  function flyToLocation({ longitude, latitude, zoom }) {
+    setViewState(v => ({
+      ...v,
+      longitude,
+      latitude,
+      zoom,
+      transitionDuration: 2200,
+      transitionInterpolator: new FlyToInterpolator({ speed: 1.2 }),
+    }));
   }
 
   const layers = [
@@ -611,18 +532,6 @@ export default function App() {
       },
     }),
 
-    // ── Border brightener ─────────────────────────────────────
-    new GeoJsonLayer({
-      id: 'borders-bright',
-      data: `${import.meta.env.BASE_URL}borders.geojson`,
-      stroked: true,
-      filled: false,
-      getLineColor: [200, 215, 230, 90],
-      getLineWidth: 1,
-      lineWidthMinPixels: 0.6,
-      lineWidthMaxPixels: 1,
-      pickable: false,
-    }),
 
     // ── Selected satellite orbit path ─────────────────────────
     new GeoJsonLayer({
@@ -799,7 +708,7 @@ export default function App() {
     // ── Terrestrial backbone (estimated) ─────────────────────
     new GeoJsonLayer({
       id: 'backbone',
-      data: layerVisibility.backbone ? `${import.meta.env.BASE_URL}backbone.geojson` : [],
+      data: `${import.meta.env.BASE_URL}backbone.geojson`,
       visible: layerVisibility.backbone,
       onDataLoad: data => {
         setBackboneCount(data.features?.length ?? 0);
@@ -820,29 +729,22 @@ export default function App() {
       getDashArray: [4, 4],
       dashJustified: true,
       extensions: [new PathStyleExtension({ dash: true })],
+      wrapLongitude: true,
       pickable: false,
     }),
 
     // ── Submarine cables ──────────────────────────────────────
     new GeoJsonLayer({
       id: 'cables',
-      data: `${import.meta.env.BASE_URL}cables.geojson`,
+      data: cableFeatures,
       visible: layerVisibility.cables,
-      onDataLoad: data => {
-        setCableCount(data.features?.length ?? 0);
-        const totalKm = (data.features || []).reduce((sum, f) => {
-          const lines = f.geometry?.coordinates || [];
-          // MultiLineString: coordinates is an array of line arrays
-          return sum + lines.reduce((s, line) => s + lineKm(line), 0);
-        }, 0);
-        setCableMiles(Math.round(totalKm * 0.621371));
-      },
       stroked: false,
       filled: false,
       getLineColor: f => [...hexToRgb(f.properties.color || '#4fc3f7'), 180],
       getLineWidth: 2,
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 3,
+      wrapLongitude: true,
       pickable: true,
       onHover: ({ object, x, y }) =>
         setTooltip(object ? { x, y, type: 'cable', ...object.properties } : null),
@@ -1064,6 +966,7 @@ export default function App() {
       onHover: ({ object, x, y }) =>
         setTooltip(object ? { x, y, type: 'landing-point', ...object.properties } : null),
     }),
+
   ];
 
   return (
@@ -1089,16 +992,25 @@ export default function App() {
         kuiperCount={kuiper?.count ?? null}
         geoSatCount={geoData.length || null}
       />
-      <div style={{
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        zIndex: 10,
-      }}>
-        <LayerToggle visible={layerVisibility} onToggle={toggleLayer} />
+      <div
+        style={{
+          position: 'absolute',
+          top: 62,
+          right: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          zIndex: 10,
+          maxHeight: 'calc(100vh - 82px)',
+          overflowY: 'auto',
+          overflowX: 'visible',
+        }}
+        onWheel={e => e.stopPropagation()}
+      >
+        <LayerToggle
+          visible={layerVisibility}
+          onToggle={toggleLayer}
+        />
         <SpaceLayerToggle visible={layerVisibility} onToggle={toggleLayer} />
       </div>
 
@@ -1119,12 +1031,12 @@ export default function App() {
         position: 'absolute',
         top: 20,
         left: 20,
-        fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+        fontFamily: MONO_FONT,
         fontSize: 18,
-        fontWeight: 800,
+        fontWeight: 700,
         letterSpacing: '0.26em',
-        color: '#e8f6ff',
-        textShadow: '0 0 20px rgba(0,180,255,0.6), 0 0 6px rgba(0,180,255,0.3)',
+        color: C.lunarWhite,
+        textShadow: '0 0 22px rgba(255, 79, 0, 0.55), 0 0 6px rgba(255, 79, 0, 0.25)',
         pointerEvents: 'none',
         userSelect: 'none',
         whiteSpace: 'nowrap',
@@ -1133,66 +1045,95 @@ export default function App() {
         PROJECT BACKBONE
       </div>
 
+      <SourcesPanel />
+
+      {startTourNow && (
+        <GuidedTour
+          onSetLayers={setLayerVisibility}
+          onFlyTo={flyToLocation}
+          onDone={() => setStartTourNow(false)}
+        />
+      )}
+
+      {(() => {
+        const hints = [];
+        if (layerVisibility.cellTowers && !cellZoomed) hints.push('cell towers (zoom 5+)');
+        if (layerVisibility.fiber      && !fiberZoomed) hints.push('fiber routes (zoom 3+)');
+        if (hints.length === 0) return null;
+        return (
+          <div style={{
+            position: 'absolute',
+            bottom: orbitSatInfo ? 86 : 18,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontFamily: MONO_FONT,
+            fontSize: 10,
+            letterSpacing: '0.14em',
+            color: C.photogray,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 10,
+            transition: 'bottom 0.3s',
+          }}>
+            ↑ ZOOM IN TO SEE {hints.join(' AND ').toUpperCase()}
+          </div>
+        );
+      })()}
+
       {orbitSatInfo && (
         <div style={{
           position: 'absolute',
           bottom: 24,
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(4, 10, 20, 0.92)',
-          border: '1px solid rgba(0, 180, 255, 0.22)',
-          borderRadius: 6,
+          background: 'rgba(13, 13, 20, 0.94)',
+          border: '1px solid rgba(255, 79, 0, 0.28)',
+          borderRadius: 4,
           padding: '12px 20px',
-          fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+          fontFamily: MONO_FONT,
           fontSize: 12,
-          color: '#8ab8cc',
+          color: C.newsprint,
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
           gap: 28,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(6px)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 14px rgba(255, 79, 0, 0.06)',
+          backdropFilter: 'blur(8px)',
           userSelect: 'none',
           whiteSpace: 'nowrap',
         }}>
           <div>
-            <div style={{ fontWeight: 700, color: '#d0eeff', fontSize: 13, letterSpacing: '0.08em', marginBottom: 3 }}>
+            <div style={{ fontWeight: 700, color: C.lunarWhite, fontSize: 13, letterSpacing: '0.08em', marginBottom: 3 }}>
               {orbitSatInfo.name}
             </div>
-            <div style={{ color: '#5a8a9a', fontSize: 10, letterSpacing: '0.12em' }}>
+            <div style={{ color: C.photogray, fontSize: 10, letterSpacing: '0.12em' }}>
               {orbitSatInfo.operator.toUpperCase()}
             </div>
           </div>
-          <div style={{ borderLeft: '1px solid rgba(0,180,255,0.18)', height: 36 }} />
+          <div style={{ borderLeft: '1px solid rgba(255, 79, 0, 0.2)', height: 36 }} />
           {[
             ['ALT',   orbitSatInfo.altitude != null ? `${orbitSatInfo.altitude.toLocaleString()} km` : '—'],
             ['VEL',   orbitSatInfo.velocity  != null ? `${orbitSatInfo.velocity} km/s`                : '—'],
             ['INCL',  `${orbitSatInfo.inclination}°`],
           ].map(([label, value]) => (
             <div key={label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#4a7a8a', letterSpacing: '0.16em', marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#a8dff0' }}>{value}</div>
+              <div style={{ fontSize: 10, color: C.photogray, letterSpacing: '0.16em', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.chromeYellow }}>{value}</div>
             </div>
           ))}
-          <div style={{ borderLeft: '1px solid rgba(0,180,255,0.18)', height: 36 }} />
+          <div style={{ borderLeft: '1px solid rgba(255, 79, 0, 0.2)', height: 36 }} />
           <div
             onClick={() => { setOrbitFeature(null); setOrbitSatInfo(null); }}
-            style={{ color: '#4a7a8a', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+            style={{ color: '#556070', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
             title="Close"
           >✕</div>
         </div>
       )}
 
-      <DetailPanel
-        feature={detailFeature}
-        onClose={() => setDetailFeature(null)}
-        landingPointFeatures={landingPointFeatures}
-        onLandingPointClick={lp => setDetailFeature({ type: 'landing-point', ...lp.properties })}
-      />
-
-      {tooltip && !detailFeature && (
+      {tooltip && (
         <div style={{ ...tooltipStyle, left: tooltip.x + 14, top: tooltip.y - 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 2, color: '#fff' }}>
+          <div style={{ fontWeight: 600, marginBottom: 2, color: C.lunarWhite }}>
             {tooltip.type === 'cell-tower'    ? 'Cell Tower Density'
            : tooltip.type === 'dns-root'      ? `${tooltip.letter}-Root · ${tooltip.name}`
            : tooltip.type === 'dns-resolver'  ? (tooltip.name || tooltip.provider)
@@ -1203,14 +1144,14 @@ export default function App() {
 
           {tooltip.type === 'cable' && (
             <>
-              {tooltip.rfs_year && <div style={{ color: '#7ecfea' }}>RFS: {tooltip.rfs_year}</div>}
+              {tooltip.rfs_year && <div style={{ color: C.chromeYellow }}>RFS: {tooltip.rfs_year}</div>}
               {tooltip.length_km && (
-                <div style={{ color: '#7ecfea' }}>
+                <div style={{ color: C.chromeYellow }}>
                   Length: {tooltip.length_km.toLocaleString()} km
                 </div>
               )}
               {tooltip.owners?.length > 0 && (
-                <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2 }}>
+                <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
                   {tooltip.owners.slice(0, 2).join(', ')}
                   {tooltip.owners.length > 2 && ` +${tooltip.owners.length - 2} more`}
                 </div>
@@ -1219,7 +1160,7 @@ export default function App() {
           )}
 
           {tooltip.type === 'landing-point' && tooltip.cables?.length > 0 && (
-            <div style={{ color: '#7ecfea', fontSize: 11, marginTop: 2 }}>
+            <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
               {tooltip.cables.slice(0, 3).join(', ')}
               {tooltip.cables.length > 3 && ` +${tooltip.cables.length - 3} more`}
             </div>
@@ -1227,11 +1168,11 @@ export default function App() {
 
           {tooltip.type === 'datacenter' && (
             <>
-              <div style={{ color: '#7ecfea' }}>
+              <div style={{ color: C.chromeYellow }}>
                 {[tooltip.city, tooltip.state, tooltip.country].filter(Boolean).join(', ')}
               </div>
               {tooltip.network_count > 0 && (
-                <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2 }}>
+                <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
                   {tooltip.network_count} colocated networks
                 </div>
               )}
@@ -1240,11 +1181,11 @@ export default function App() {
 
           {tooltip.type === 'ixp' && (
             <>
-              <div style={{ color: '#7ecfea' }}>
+              <div style={{ color: C.chromeYellow }}>
                 {[tooltip.city, tooltip.country].filter(Boolean).join(', ')}
               </div>
               {tooltip.participants > 0 && (
-                <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2 }}>
+                <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
                   {tooltip.participants.toLocaleString()} participants
                 </div>
               )}
@@ -1252,14 +1193,14 @@ export default function App() {
           )}
 
           {tooltip.type === 'satellite' && (
-            <div style={{ color: '#7ecfea', fontSize: 11, marginTop: 2 }}>{tooltip.operator}</div>
+            <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>{tooltip.operator}</div>
           )}
 
           {tooltip.type === 'ground-station' && (
             <>
-              <div style={{ color: '#7ecfea' }}>{tooltip.operator}</div>
+              <div style={{ color: C.chromeYellow }}>{tooltip.operator}</div>
               {tooltip.station_type && (
-                <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2, textTransform: 'capitalize' }}>
+                <div style={{ color: C.photogray, fontSize: 11, marginTop: 2, textTransform: 'capitalize' }}>
                   {tooltip.station_type}
                 </div>
               )}
@@ -1268,7 +1209,7 @@ export default function App() {
 
           {tooltip.type === 'cdn' && (
             <>
-              <div style={{ color: '#7ecfea' }}>
+              <div style={{ color: C.chromeYellow }}>
                 {[tooltip.city, tooltip.country].filter(Boolean).join(', ')}
               </div>
               <div style={{
@@ -1289,26 +1230,26 @@ export default function App() {
 
           {tooltip.type === 'dns-root' && (
             <>
-              <div style={{ color: '#7ecfea' }}>
+              <div style={{ color: C.chromeYellow }}>
                 {[tooltip.city, tooltip.country].filter(Boolean).join(', ')}
               </div>
-              <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2 }}>
+              <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
                 {tooltip.operator}
               </div>
               {tooltip.isGlobal && (
-                <div style={{ color: '#4a9a7a', fontSize: 10, marginTop: 2 }}>anycast instance</div>
+                <div style={{ color: C.oxidizedCopper, fontSize: 10, marginTop: 2 }}>anycast instance</div>
               )}
             </>
           )}
 
           {tooltip.type === 'dns-resolver' && (
             <>
-              <div style={{ color: '#7ecfea' }}>
+              <div style={{ color: C.chromeYellow }}>
                 {[tooltip.city, tooltip.country].filter(Boolean).join(', ')}
               </div>
-              <div style={{ color: '#6ab8d0', fontSize: 11, marginTop: 2 }}>{tooltip.provider}</div>
+              <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>{tooltip.provider}</div>
               {tooltip.ip && (
-                <div style={{ color: '#5a7a8a', fontSize: 10, marginTop: 2 }}>{tooltip.ip}</div>
+                <div style={{ color: '#556070', fontSize: 10, marginTop: 2 }}>{tooltip.ip}</div>
               )}
             </>
           )}
@@ -1316,19 +1257,19 @@ export default function App() {
           {tooltip.type === 'fiber-route' && (
             <>
               {tooltip.from && tooltip.to && (
-                <div style={{ color: '#7ecfea', fontSize: 11, marginTop: 2 }}>
+                <div style={{ color: C.photogray, fontSize: 11, marginTop: 2 }}>
                   {tooltip.from} → {tooltip.to}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                 {tooltip.route_type && (
-                  <span style={{ color: '#6ab8d0', fontSize: 10, textTransform: 'capitalize' }}>
+                  <span style={{ color: C.photogray, fontSize: 10, textTransform: 'capitalize' }}>
                     {tooltip.route_type}
                   </span>
                 )}
                 {tooltip.source === 'verified'
-                  ? <span style={{ color: '#00d2c8', fontSize: 10 }}>verified</span>
-                  : <span style={{ color: '#6496aa', fontSize: 10 }}>estimated</span>
+                  ? <span style={{ color: C.oxidizedCopper, fontSize: 10 }}>verified</span>
+                  : <span style={{ color: '#556070', fontSize: 10 }}>estimated</span>
                 }
               </div>
             </>
@@ -1345,8 +1286,8 @@ export default function App() {
                 ['Updated',   tooltip.updated],
               ].filter(([, v]) => v).map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <span style={{ color: '#9060b0', fontSize: 11 }}>{label}</span>
-                  <span style={{ color: '#e080d8', fontSize: 11 }}>{value}</span>
+                  <span style={{ color: '#556070', fontSize: 11 }}>{label}</span>
+                  <span style={{ color: C.photogray, fontSize: 11 }}>{value}</span>
                 </div>
               ))}
             </>
@@ -1359,28 +1300,31 @@ export default function App() {
           position: 'absolute',
           bottom: 24,
           right: 24,
-          background: 'rgba(4, 10, 20, 0.92)',
-          border: '1px solid rgba(0, 180, 255, 0.25)',
+          background: 'rgba(13, 13, 20, 0.94)',
+          border: '1px solid rgba(255, 79, 0, 0.28)',
           borderRadius: 4,
           padding: '12px 16px',
-          fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+          fontFamily: MONO_FONT,
           fontSize: 12,
-          color: '#d0eeff',
+          color: C.newsprint,
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           zIndex: 20,
-          backdropFilter: 'blur(6px)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 14px rgba(255, 79, 0, 0.06)',
         }}>
-          <span>Fly to the ISS?</span>
+          <span style={{ color: C.photogray, letterSpacing: '0.08em' }}>FLY TO THE ISS?</span>
           <button onClick={() => confirmIssAutoFly(true)} style={{
-            background: 'rgba(0,180,255,0.15)', border: '1px solid rgba(0,180,255,0.4)',
-            borderRadius: 3, color: '#00c8ff', cursor: 'pointer', fontSize: 12, padding: '3px 10px',
-          }}>Yes</button>
+            background: 'rgba(255, 79, 0, 0.12)', border: '1px solid rgba(255, 79, 0, 0.4)',
+            borderRadius: 3, color: C.signalOrange, cursor: 'pointer', fontSize: 12,
+            fontFamily: MONO_FONT, padding: '3px 10px', letterSpacing: '0.08em',
+          }}>YES</button>
           <button onClick={() => confirmIssAutoFly(false)} style={{
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 3, color: '#8ab', cursor: 'pointer', fontSize: 12, padding: '3px 10px',
-          }}>No thanks</button>
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3, color: C.photogray, cursor: 'pointer', fontSize: 12,
+            fontFamily: MONO_FONT, padding: '3px 10px', letterSpacing: '0.08em',
+          }}>NO</button>
         </div>
       )}
 
@@ -1390,47 +1334,89 @@ export default function App() {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 'clamp(360px, 42vw, 660px)',
-          aspectRatio: '1 / 1',
+          width: 'clamp(320px, 38vw, 580px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(4, 10, 20, 0.88)',
-          border: '1px solid rgba(0, 180, 255, 0.2)',
+          background: 'rgba(13, 13, 20, 0.92)',
+          border: '1px solid rgba(255, 79, 0, 0.28)',
           borderRadius: 4,
-          padding: '48px',
+          padding: 'clamp(36px, 4vw, 56px) clamp(40px, 5vw, 64px)',
           boxSizing: 'border-box',
-          fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
-          fontSize: 'clamp(20px, 2.2vw, 34px)',
-          fontWeight: 800,
-          letterSpacing: '0.1em',
-          lineHeight: 1.6,
-          color: '#d0eeff',
+          fontFamily: MONO_FONT,
+          fontSize: 'clamp(15px, 1.6vw, 22px)',
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          lineHeight: 1.75,
+          color: C.lunarWhite,
           textAlign: 'center',
-          textShadow: '0 0 20px rgba(0,180,255,0.5), 0 0 6px rgba(0,180,255,0.25)',
-          backdropFilter: 'blur(6px)',
-          boxShadow: '0 0 24px rgba(0,140,220,0.08), inset 0 0 0 1px rgba(0,180,255,0.05)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 0 40px rgba(0,0,0,0.7), 0 0 28px rgba(255, 79, 0, 0.07), inset 0 0 0 1px rgba(255, 79, 0, 0.05)',
           userSelect: 'none',
-          pointerEvents: 'none',
           opacity: taglineVisible ? 1 : 0,
           transition: 'opacity 5s ease',
           zIndex: 10,
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2em' }}>
-            <div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.6em' }}>
+            <div style={{ color: C.newsprint, fontWeight: 400, lineHeight: 1.9, pointerEvents: 'none' }}>
               The internet isn't wireless<br />and it isn't weightless.<br />
-              <span style={{ color: '#00c8ff' }}>Project Backbone</span> makes it visible.
+              <span style={{
+                color: C.lunarWhite,
+                fontWeight: 700,
+                textShadow: '0 0 18px rgba(255, 79, 0, 0.45), 0 0 6px rgba(255, 79, 0, 0.2)',
+              }}>Project Backbone</span> makes it visible.
             </div>
-            <img
-              src={`${import.meta.env.BASE_URL}logomark-white.png`}
-              alt="Project Backbone"
-              style={{
-                height: 'clamp(32px, 3.5vw, 54px)',
-                opacity: 0.85,
-                filter: 'drop-shadow(0 0 12px rgba(0,180,255,0.5)) drop-shadow(0 0 4px rgba(0,180,255,0.25))',
-                userSelect: 'none',
-              }}
-            />
+            <div style={{ borderTop: '1px solid rgba(255, 79, 0, 0.18)', width: '100%', pointerEvents: 'none' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(32px, 5vw, 72px)' }}>
+              <button
+                onClick={() => setStartTourNow(true)}
+                style={{
+                  fontFamily: MONO_FONT,
+                  fontSize: 'clamp(8px, 0.7vw, 10px)',
+                  letterSpacing: '0.12em',
+                  fontWeight: 700,
+                  padding: '8px 12px',
+                  border: `1px solid ${C.signalOrange}`,
+                  borderRadius: 0,
+                  background: 'rgba(255, 79, 0, 0.12)',
+                  color: C.signalOrange,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                NEW HERE?<br />TAKE THE TOUR
+              </button>
+              <img
+                src={`${import.meta.env.BASE_URL}logomark-white.png`}
+                alt="Project Backbone"
+                style={{
+                  height: 'clamp(28px, 3vw, 44px)',
+                  opacity: 0.75,
+                  filter: 'drop-shadow(0 0 10px rgba(255, 79, 0, 0.4)) drop-shadow(0 0 3px rgba(255, 79, 0, 0.2))',
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  flexShrink: 0,
+                }}
+              />
+              <button
+                onClick={() => setStartTourNow(false)}
+                style={{
+                  fontFamily: MONO_FONT,
+                  fontSize: 'clamp(8px, 0.7vw, 10px)',
+                  letterSpacing: '0.12em',
+                  fontWeight: 700,
+                  padding: '8px 12px',
+                  border: `1px solid ${C.signalOrange}`,
+                  borderRadius: 0,
+                  background: 'rgba(255, 79, 0, 0.12)',
+                  color: C.signalOrange,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                I KNOW WHAT<br />I'M DOING
+              </button>
+            </div>
           </div>
         </div>
       )}

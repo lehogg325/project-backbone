@@ -1,6 +1,5 @@
 import { useState } from 'react';
-
-const FONT = '"JetBrains Mono", "Fira Code", "Courier New", monospace';
+import { MONO_FONT, C } from './ui-shared';
 
 const s = {
   panel: {
@@ -9,11 +8,11 @@ const s = {
     top: 0,
     width: 300,
     height: '100%',
-    background: 'rgba(4, 10, 20, 0.96)',
-    borderLeft: '1px solid rgba(0, 180, 255, 0.18)',
-    fontFamily: FONT,
+    background: 'rgba(13, 13, 20, 0.97)',
+    borderLeft: '1px solid rgba(255, 79, 0, 0.22)',
+    fontFamily: MONO_FONT,
     fontSize: 12,
-    color: '#8ab8cc',
+    color: C.newsprint,
     zIndex: 20,
     overflowY: 'auto',
     transition: 'transform 0.26s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -22,10 +21,10 @@ const s = {
   },
   header: {
     padding: '16px 18px 12px',
-    borderBottom: '1px solid rgba(0, 180, 255, 0.13)',
+    borderBottom: '1px solid rgba(255, 79, 0, 0.15)',
     position: 'sticky',
     top: 0,
-    background: 'rgba(4, 10, 20, 0.99)',
+    background: 'rgba(13, 13, 20, 0.99)',
     zIndex: 1,
   },
   closeBtn: {
@@ -34,23 +33,23 @@ const s = {
     right: 14,
     background: 'none',
     border: 'none',
-    color: '#3a6070',
+    color: '#556070',
     cursor: 'pointer',
     fontSize: 18,
     lineHeight: 1,
     padding: '2px 4px',
-    fontFamily: FONT,
+    fontFamily: MONO_FONT,
   },
   badge: {
     fontSize: 9,
     letterSpacing: '0.22em',
-    color: '#2a5a6a',
+    color: C.photogray,
     marginBottom: 5,
   },
   title: {
     fontSize: 13,
     fontWeight: 700,
-    color: '#d0eeff',
+    color: C.lunarWhite,
     letterSpacing: '0.04em',
     paddingRight: 24,
     lineHeight: 1.4,
@@ -59,13 +58,13 @@ const s = {
     padding: '14px 18px 24px',
   },
   divider: {
-    borderTop: '1px solid rgba(0, 180, 255, 0.12)',
+    borderTop: '1px solid rgba(255, 79, 0, 0.14)',
     margin: '12px 0',
   },
   sectionLabel: {
     fontSize: 9,
     letterSpacing: '0.22em',
-    color: '#2a5a6a',
+    color: C.photogray,
     marginBottom: 8,
     marginTop: 2,
   },
@@ -77,25 +76,25 @@ const s = {
     marginBottom: 7,
   },
   label: {
-    color: '#3a6070',
+    color: '#556070',
     fontSize: 10,
     letterSpacing: '0.1em',
     flexShrink: 0,
   },
   value: {
-    color: '#a8dff0',
+    color: C.newsprint,
     fontSize: 11,
     textAlign: 'right',
   },
   listItem: {
-    color: '#6ab8d0',
+    color: C.newsprint,
     fontSize: 11,
     paddingLeft: 10,
     marginBottom: 4,
     lineHeight: 1.5,
   },
   linkItem: {
-    color: '#4fc3f7',
+    color: C.celestialBlue,
     fontSize: 11,
     paddingLeft: 10,
     marginBottom: 5,
@@ -103,19 +102,20 @@ const s = {
     letterSpacing: '0.02em',
   },
   website: {
-    color: '#4fc3f7',
+    color: C.celestialBlue,
     fontSize: 11,
     textDecoration: 'none',
     wordBreak: 'break-all',
   },
   note: {
     fontSize: 9,
-    color: '#2a4a5a',
+    color: '#556070',
     marginTop: 10,
     letterSpacing: '0.06em',
     lineHeight: 1.6,
   },
 };
+
 
 function Row({ label, value }) {
   if (value == null || value === '' || value === '—') return null;
@@ -171,7 +171,7 @@ function LandingPointLink({ name, onClick }) {
   const [hov, setHov] = useState(false);
   return (
     <div
-      style={{ ...s.linkItem, color: hov ? '#80d8ff' : '#4fc3f7' }}
+      style={{ ...s.linkItem, color: hov ? C.lunarWhite : C.celestialBlue }}
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -182,9 +182,10 @@ function LandingPointLink({ name, onClick }) {
 }
 
 function LandingPointDetail({ p }) {
+  const cableCount = p.cables?.length ?? 0;
   return (
     <>
-      <SectionLabel>CONNECTED CABLES ({p.cables?.length ?? 0})</SectionLabel>
+      <SectionLabel>CONNECTED CABLES ({cableCount})</SectionLabel>
       {(p.cables || []).map((c, i) => (
         <div key={i} style={s.listItem}>· {c}</div>
       ))}
@@ -256,17 +257,18 @@ function CellTowerDetail({ p }) {
 }
 
 const CDN_COLORS = {
-  Cloudflare: '#f38020',
-  CloudFront: '#ffc832',
+  Cloudflare: C.signalOrange,
+  CloudFront: C.chromeYellow,
   Fastly:     '#ff5ab4',
-  Akamai:     '#1e96ff',
+  Akamai:     C.celestialBlue,
 };
 
 function CdnDetail({ p }) {
   const providers = p.providers || [];
+  const totalPops = providers.reduce((n, pr) => n + pr.count, 0);
   return (
     <>
-      <SectionLabel>CDN PROVIDERS ({providers.reduce((n, pr) => n + pr.count, 0)} PoPs within 50 km)</SectionLabel>
+      <SectionLabel>CDN PROVIDERS ({totalPops} PoPs within 50 km)</SectionLabel>
       {providers.map(({ name, count, cities }) => {
         const color = CDN_COLORS[name] || '#a8dff0';
         return (
@@ -280,7 +282,7 @@ function CdnDetail({ p }) {
               </span>
             </div>
             {cities.length > 0 && (
-              <div style={{ ...s.listItem, color: '#4a7a8a', fontSize: 10, paddingLeft: 14 }}>
+              <div style={{ ...s.listItem, color: '#556070', fontSize: 10, paddingLeft: 14 }}>
                 {cities.slice(0, 4).join(' · ')}
                 {cities.length > 4 ? ` +${cities.length - 4} more` : ''}
               </div>
@@ -305,7 +307,7 @@ function DnsRootDetail({ p }) {
       <Row label="CITY"     value={p.city} />
       <Row label="COUNTRY"  value={p.country} />
       {p.isGlobal && (
-        <div style={{ ...s.note, color: '#4a9a7a', marginTop: 8 }}>↳ global anycast instance</div>
+        <div style={{ ...s.note, color: C.oxidizedCopper, marginTop: 8 }}>↳ global anycast instance</div>
       )}
     </>
   );
@@ -367,15 +369,15 @@ function DnsResolverDetail({ p }) {
 // ── Type metadata ─────────────────────────────────────────────────────────────
 
 const TYPE_META = {
-  cable:          { badge: 'SUBMARINE CABLE',        accent: '#4fc3f7' },
-  'landing-point':{ badge: 'CABLE LANDING POINT',    accent: '#64d8f5' },
-  datacenter:     { badge: 'DATA CENTER',             accent: '#4ddb8a' },
-  ixp:            { badge: 'INTERNET EXCHANGE',       accent: '#ffd740' },
-  'cell-tower':   { badge: 'CELL TOWER DENSITY',      accent: '#ff80d8' },
-  'fiber-route':  { badge: 'TERRESTRIAL FIBER ROUTE',   accent: '#00d2c8' },
-  'dns-root':     { badge: 'DNS ROOT SERVER',          accent: '#a0e0ff' },
-  'dns-resolver': { badge: 'PUBLIC DNS RESOLVER',      accent: '#ff9060' },
-  'cdn-edge':     { badge: 'CDN EDGE LOCATION',        accent: '#f38020' },
+  cable:          { badge: 'SUBMARINE CABLE',          accent: C.celestialBlue },
+  'landing-point':{ badge: 'CABLE LANDING POINT',      accent: C.celestialBlue },
+  datacenter:     { badge: 'DATA CENTER',               accent: C.vacuumAmber },
+  ixp:            { badge: 'INTERNET EXCHANGE',         accent: C.chromeYellow },
+  'cell-tower':   { badge: 'CELL TOWER DENSITY',        accent: C.photogray },
+  'fiber-route':  { badge: 'TERRESTRIAL FIBER ROUTE',   accent: C.oxidizedCopper },
+  'dns-root':     { badge: 'DNS ROOT SERVER',            accent: C.oxidizedCopper },
+  'dns-resolver': { badge: 'PUBLIC DNS RESOLVER',        accent: C.signalOrange },
+  'cdn-edge':     { badge: 'CDN EDGE LOCATION',          accent: C.chromeYellow },
 };
 
 // ── Main component ────────────────────────────────────────────────────────────

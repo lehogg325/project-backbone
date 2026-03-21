@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MONO_FONT, C } from './ui-shared';
 
 // ── Mass estimates (kg per unit) ──────────────────────────────────────────────
 // Sources: TeleGeography, ITU, GSMA, IEA, SpaceX/OneWeb/Amazon filings
@@ -24,20 +25,19 @@ function formatMass(kg) {
 }
 
 const SECTION_COLORS = {
-  cables:    '#4fc3f7',
-  backbone:  '#ffa03c',
-  ixp:       '#c8e600',
-  dc:        '#00e676',
-  cdn:       '#f38020',
-  dns:       '#80d8ff',
-  cell:      '#ff4dc8',
+  cables:   C.celestialBlue,   // sky/ocean — Celestial Blue
+  ixp:      C.signalOrange,    // exchange hubs — Signal Orange
+  dc:       C.vacuumAmber,     // machine warmth — Vacuum Tube Amber
+  cdn:      C.chromeYellow,    // delivery network — Chrome Yellow
+  dns:      C.oxidizedCopper,  // aged infrastructure — Oxidized Copper
+  cell:     C.photogray,       // ground-level grid — Photographic Gray
 };
 
 const SAT_COLORS = {
-  starlink: '#80c0ff',
-  oneweb:   '#80ffcc',
-  kuiper:   '#ffbe50',
-  geo:      '#fff078',
+  starlink: C.celestialBlue,  // SpaceX — sky blue
+  oneweb:   C.oxidizedCopper, // OneWeb — copper green
+  kuiper:   C.chromeYellow,   // Amazon — chrome yellow
+  geo:      C.vacuumAmber,    // GEO — amber warmth
 };
 
 const styles = {
@@ -45,18 +45,18 @@ const styles = {
     position: 'absolute',
     top: 62,
     left: 20,
-    background: 'rgba(4, 10, 20, 0.88)',
-    border: '1px solid rgba(0, 180, 255, 0.2)',
+    background: 'rgba(13, 13, 20, 0.92)',
+    border: '1px solid rgba(255, 79, 0, 0.28)',
     borderRadius: 4,
-    padding: '14px 18px',
-    fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+    padding: '12px 16px',
+    fontFamily: MONO_FONT,
     fontSize: 12,
-    color: '#8ab8cc',
+    color: C.newsprint,
     minWidth: 220,
     maxHeight: 'calc(100vh - 82px)',
     overflowY: 'auto',
-    backdropFilter: 'blur(6px)',
-    boxShadow: '0 0 24px rgba(0, 140, 220, 0.08), inset 0 0 0 1px rgba(0,180,255,0.05)',
+    backdropFilter: 'blur(8px)',
+    boxShadow: '0 0 28px rgba(255, 79, 0, 0.07), inset 0 0 0 1px rgba(255, 79, 0, 0.05)',
     userSelect: 'none',
     pointerEvents: 'auto',
     zIndex: 10,
@@ -65,13 +65,13 @@ const styles = {
     fontSize: 14,
     fontWeight: 700,
     letterSpacing: '0.18em',
-    color: '#d0eeff',
+    color: C.lunarWhite,
     marginBottom: 10,
   },
-  accent: { color: '#00c8ff' },
+  accent: { color: C.signalOrange },
   divider: {
-    borderTop: '1px solid rgba(0, 180, 255, 0.15)',
-    margin: '10px 0',
+    borderTop: '1px solid rgba(255, 79, 0, 0.18)',
+    margin: '6px 0',
   },
   sectionHeader: {
     display: 'flex',
@@ -79,7 +79,7 @@ const styles = {
     gap: 6,
     fontSize: 10,
     letterSpacing: '0.2em',
-    marginBottom: 6,
+    marginBottom: 4,
     marginTop: 2,
   },
   sectionIcon: {
@@ -92,16 +92,16 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'baseline',
     gap: 16,
-    marginBottom: 5,
+    marginBottom: 3,
   },
   label: {
     letterSpacing: '0.1em',
-    color: '#7aaabb',
+    color: C.photogray,
     fontSize: 11,
   },
   note: {
     fontSize: 10,
-    color: '#4a7a8a',
+    color: '#556070',
     marginTop: 8,
     letterSpacing: '0.06em',
   },
@@ -118,14 +118,6 @@ function IconCables({ color }) {
   );
 }
 
-function IconBackbone({ color }) {
-  return (
-    <svg width="20" height="10" viewBox="0 0 20 10">
-      <line x1="0" y1="5" x2="20" y2="5" stroke={color} strokeWidth="1.5"
-            strokeDasharray="4,3"/>
-    </svg>
-  );
-}
 
 function IconIXP({ color }) {
   return (
@@ -203,9 +195,9 @@ function Counter({ value, hex, suffix = '' }) {
   const s = {
     fontSize: 13,
     fontWeight: 600,
-    color: hex || '#a8dff0',
+    color: hex || C.chromeYellow,
   };
-  if (value == null) return <span style={{ ...s, color: '#2a4a5a' }}>LOADING…</span>;
+  if (value == null) return <span style={{ ...s, color: C.blueprintIndigo }}>LOADING…</span>;
   return <span style={s}>{value.toLocaleString()}{suffix}</span>;
 }
 
@@ -233,6 +225,7 @@ export default function InfoPanel({
   geoSatCount,
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [massOpen, setMassOpen] = useState(false);
 
   // ── per-section mass (kg), null while props still loading ─────────────────
   const mCables   = cableMiles    != null ? cableMiles    * MI_TO_KM * KG_PER_CABLE_KM    : null;
@@ -258,38 +251,46 @@ export default function InfoPanel({
         onClick={() => setCollapsed(c => !c)}
         style={{ ...styles.title, cursor: 'pointer', marginBottom: collapsed ? 0 : 10 }}
       >
-        <span style={styles.accent}>{collapsed ? '▸ ' : '▾ '}</span>THE WEIGHT OF THE CLOUD
+        <span style={styles.accent}>◈ </span>THE WEIGHT OF THE CLOUD
       </div>
 
       {!collapsed && (<>
 
       {/* ── 0. Estimated mass summary ─────────────────────────────────────── */}
       <div style={styles.divider} />
-      <div style={{ ...styles.sectionHeader, color: '#d0eeff' }}>ESTIMATED MASS</div>
-      <div style={{ ...styles.row, marginBottom: 8 }}>
-        <span style={{ ...styles.label, color: '#d0eeff', fontWeight: 700 }}>TOTAL</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', letterSpacing: '0.04em' }}>
-          {mTotal == null ? <span style={{ color: '#2a4a5a' }}>LOADING…</span> : formatMass(mTotal)}
+      <div
+        onClick={() => setMassOpen(o => !o)}
+        style={{ ...styles.sectionHeader, color: C.lunarWhite, cursor: 'pointer', userSelect: 'none' }}
+      >
+        ESTIMATED MASS
+        <span style={{ marginLeft: 'auto', fontSize: 9, color: C.photogray }}>{massOpen ? '▲' : '▼'}</span>
+      </div>
+      <div style={{ ...styles.row, marginBottom: massOpen ? 4 : 0 }}>
+        <span style={{ ...styles.label, color: C.lunarWhite, fontWeight: 700 }}>TOTAL</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: C.lunarWhite, letterSpacing: '0.04em' }}>
+          {mTotal == null ? <span style={{ color: C.blueprintIndigo }}>LOADING…</span> : formatMass(mTotal)}
         </span>
       </div>
-      <div style={{ borderTop: '1px solid rgba(0,180,255,0.08)', margin: '0 0 6px' }} />
-      {[
-        ['CABLES',     mCables,   SECTION_COLORS.cables],
-        ['BACKBONE',   mBackbone, SECTION_COLORS.backbone],
-        ['IXPs',       mIXP,      SECTION_COLORS.ixp],
-        ['DATA CTRS',  mDC,       SECTION_COLORS.dc],
-        ['CDN EDGE',   mCDN,      SECTION_COLORS.cdn],
-        ['DNS',        mDNS,      SECTION_COLORS.dns],
-        ['CELL TOWERS',mCell,     SECTION_COLORS.cell],
-        ['SATELLITES', mSats,     '#a0c8e0'],
-      ].map(([label, mass, color]) => (
-        <div key={label} style={{ ...styles.row, marginBottom: 3 }}>
-          <span style={{ ...styles.label, fontSize: 10 }}>{label}</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color }}>
-            {mass == null ? <span style={{ color: '#2a4a5a' }}>…</span> : formatMass(mass)}
-          </span>
-        </div>
-      ))}
+      {massOpen && (<>
+        <div style={{ borderTop: '1px solid rgba(255, 79, 0, 0.1)', margin: '2px 0 4px' }} />
+        {[
+          ['CABLES',     mCables,   SECTION_COLORS.cables],
+          ['BACKBONE',   mBackbone, SECTION_COLORS.backbone],
+          ['IXPs',       mIXP,      SECTION_COLORS.ixp],
+          ['DATA CTRS',  mDC,       SECTION_COLORS.dc],
+          ['CDN EDGE',   mCDN,      SECTION_COLORS.cdn],
+          ['DNS',        mDNS,      SECTION_COLORS.dns],
+          ['CELL TOWERS',mCell,     SECTION_COLORS.cell],
+          ['SATELLITES', mSats,     '#a0c8e0'],
+        ].map(([label, mass, color]) => (
+          <div key={label} style={{ ...styles.row, marginBottom: 2 }}>
+            <span style={{ ...styles.label, fontSize: 10 }}>{label}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color }}>
+              {mass == null ? <span style={{ color: C.blueprintIndigo }}>…</span> : formatMass(mass)}
+            </span>
+          </div>
+        ))}
+      </>)}
 
       {/* ── 1. Submarine cables ───────────────────────────────────────────── */}
       <div style={styles.divider} />
@@ -315,27 +316,7 @@ export default function InfoPanel({
         <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.cables }}>~1.3 Pbps</span>
       </div>
 
-      {/* ── 2. Terrestrial backbone ───────────────────────────────────────── */}
-      <div style={styles.divider} />
-      <SectionHeader
-        label="TERRESTRIAL BACKBONE (EST.)"
-        color={SECTION_COLORS.backbone}
-        icon={<IconBackbone color={SECTION_COLORS.backbone} />}
-      />
-      <div style={styles.row}>
-        <span style={styles.label}>ROUTES</span>
-        <Counter value={backboneCount} hex={SECTION_COLORS.backbone} />
-      </div>
-      <div style={styles.row}>
-        <span style={styles.label}>TOTAL LENGTH</span>
-        <Counter value={backboneMiles} hex={SECTION_COLORS.backbone} suffix=" mi" />
-      </div>
-      <div style={styles.row}>
-        <span style={styles.label}>EST. TRAFFIC</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.backbone }}>~4 Pbps</span>
-      </div>
-
-      {/* ── 3. Internet exchanges ─────────────────────────────────────────── */}
+      {/* ── 2. Internet exchanges ─────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="INTERNET EXCHANGES"
@@ -351,7 +332,7 @@ export default function InfoPanel({
         <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.ixp }}>~150 Tbps</span>
       </div>
 
-      {/* ── 4. Data centers ───────────────────────────────────────────────── */}
+      {/* ── 3. Data centers ───────────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="DATA CENTERS"
@@ -375,7 +356,7 @@ export default function InfoPanel({
         <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.dc }}>~500 Tbps</span>
       </div>
 
-      {/* ── 5. CDN edge network ───────────────────────────────────────────── */}
+      {/* ── 4. CDN edge network ───────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="CDN EDGE NETWORK"
@@ -387,10 +368,6 @@ export default function InfoPanel({
         <Counter value={cdnPopCount} hex={SECTION_COLORS.cdn} />
       </div>
       <div style={styles.row}>
-        <span style={styles.label}>PROVIDERS</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.cdn }}>4</span>
-      </div>
-      <div style={styles.row}>
         <span style={styles.label}>COUNTRIES</span>
         <Counter value={cdnCountryCount} hex={SECTION_COLORS.cdn} />
       </div>
@@ -399,7 +376,7 @@ export default function InfoPanel({
         <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.cdn }}>~700 Tbps</span>
       </div>
 
-      {/* ── 6. DNS infrastructure ─────────────────────────────────────────── */}
+      {/* ── 5. DNS infrastructure ─────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="DNS INFRASTRUCTURE"
@@ -411,19 +388,11 @@ export default function InfoPanel({
         <Counter value={dnsRootCount} hex={SECTION_COLORS.dns} />
       </div>
       <div style={styles.row}>
-        <span style={styles.label}>ROOT IDENTITIES</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.dns }}>13</span>
-      </div>
-      <div style={styles.row}>
         <span style={styles.label}>RESOLVER POPS</span>
         <Counter value={dnsResolverCount} hex={SECTION_COLORS.dns} />
       </div>
-      <div style={styles.row}>
-        <span style={styles.label}>PROVIDERS</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: SECTION_COLORS.dns }}>4</span>
-      </div>
 
-      {/* ── 7. Cell towers ────────────────────────────────────────────────── */}
+      {/* ── 6. Cell towers ────────────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="CELL TOWERS"
@@ -434,20 +403,8 @@ export default function InfoPanel({
         <span style={styles.label}>TOTAL SITES</span>
         <Counter value={cellSiteCount} hex={SECTION_COLORS.cell} />
       </div>
-      <div style={styles.row}>
-        <span style={styles.label}>DENSITY CELLS</span>
-        <Counter value={cellTowerCount} hex={SECTION_COLORS.cell} />
-      </div>
-      <div style={styles.row}>
-        <span style={styles.label}>SOURCE</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: SECTION_COLORS.cell }}>OpenCelliD</span>
-      </div>
-      <div style={styles.row}>
-        <span style={styles.label}>VISIBLE AT</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: SECTION_COLORS.cell }}>zoom ≥ 5</span>
-      </div>
 
-      {/* ── 8. Satellites (live) ──────────────────────────────────────────── */}
+      {/* ── 7. Satellites (live) ──────────────────────────────────────────── */}
       <div style={styles.divider} />
       <SectionHeader
         label="SATELLITES (LIVE)"
@@ -463,15 +420,11 @@ export default function InfoPanel({
         <div key={label} style={styles.row}>
           <span style={styles.label}>{label}</span>
           {count == null
-            ? <span style={{ fontSize: 13, fontWeight: 600, color: '#2a4a5a' }}>LOADING…</span>
+            ? <span style={{ fontSize: 13, fontWeight: 600, color: C.blueprintIndigo }}>LOADING…</span>
             : <span style={{ fontSize: 13, fontWeight: 600, color }}>{count.toLocaleString()}</span>
           }
         </div>
       ))}
-
-      <div style={styles.note}>
-        ↳ traffic est. via Cisco VNI · TeleGeography · Euro-IX
-      </div>
       </>)}
     </div>
   );
