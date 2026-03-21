@@ -43,7 +43,6 @@ const TOUR_STEPS = [
     body: "Your packet surfaces on the European coast and immediately enters a land-based fiber network. Solid lines are verified routes; dashed lines are estimated from network topology. This dense web of glass threads carries your packet east through the continent toward its destination.",
     layers: { fiber: true },
     flyTo: { longitude: 2, latitude: 50, zoom: 4.5 },
-    callout: { direction: 'right', label: 'EXPLORE LAYERS', bottom: 215, right: 272 },
   },
   {
     title: 'The Data Center',
