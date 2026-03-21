@@ -197,7 +197,7 @@ function LayerRow({ layer, on, onToggle }) {
 }
 
 export default function LayerToggle({ visible, onToggle }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // starts open
 
   return (
     <div style={s.panel}>

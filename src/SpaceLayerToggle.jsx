@@ -139,7 +139,7 @@ function LayerRow({ layer, on, onToggle }) {
 }
 
 export default function SpaceLayerToggle({ visible, onToggle }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const anyOn = LAYERS.some(l => visible[l.id]);
 
   return (
