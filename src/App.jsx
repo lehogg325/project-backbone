@@ -1056,6 +1056,32 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
 
       <SourcesPanel />
 
+      {/* ── Guided Tour button (bottom-left) ────────────────────────────────── */}
+      <button
+        onClick={() => setStartTourNow(true)}
+        style={{
+          position: 'absolute',
+          bottom: isMobile ? 72 : 20,
+          left: 20,
+          fontFamily: MONO_FONT,
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.18em',
+          color: startTourNow ? C.signalOrange : C.photogray,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '8px 0',
+          minHeight: 44,
+          userSelect: 'none',
+          zIndex: 60,
+          transition: 'color 0.2s',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        GUIDED TOUR
+      </button>
+
       {/* ── Mobile bottom nav ───────────────────────────────────────────────── */}
       {isMobile && (
         <div style={{
