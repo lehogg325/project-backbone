@@ -1443,7 +1443,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.6em' }}>
             <div style={{ color: C.newsprint, fontWeight: 400, lineHeight: 1.9, pointerEvents: 'none' }}>
-              The internet isn't wireless<br />and it isn't weightless.<br />
+              The internet isn't ethereal<br />and it isn't magic.<br />
               <span style={{
                 color: C.lunarWhite,
                 fontWeight: 700,
