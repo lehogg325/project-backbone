@@ -488,7 +488,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
         operator = 'OneWeb'; color = 'green';
       } else if (layer.id === 'kuiper-sats') {
         group = kuiper; groupRef = kuiperGroup.current;
-        operator = 'Amazon Kuiper'; color = 'orange';
+        operator = 'Amazon LEO'; color = 'orange';
       } else {
         group = geo; groupRef = geoGroup.current;
         operator = 'GEO Comm Sat'; color = 'amber';
@@ -854,7 +854,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
       pickable: true,
       onHover: ({ object, x, y }) =>
         setTooltip(object != null
-          ? { x, y, type: 'satellite', name: kuiper.names[object], operator: 'Amazon Kuiper' }
+          ? { x, y, type: 'satellite', name: kuiper.names[object], operator: 'Amazon LEO' }
           : null),
     }),
 

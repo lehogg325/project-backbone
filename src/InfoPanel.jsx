@@ -421,7 +421,7 @@ export default function InfoPanel({
       {[
         ['STARLINK',  starlinkCount, SAT_COLORS.starlink],
         ['ONEWEB',    onewebCount,   SAT_COLORS.oneweb],
-        ['KUIPER',    kuiperCount,   SAT_COLORS.kuiper],
+        ['AMAZON LEO', kuiperCount,  SAT_COLORS.kuiper],
         ['GEO COMM',  geoSatCount,   SAT_COLORS.geo],
       ].map(([label, count, color]) => (
         <div key={label} style={styles.row}>

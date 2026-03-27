@@ -23,9 +23,9 @@ const LAYERS = [
   },
   {
     id: 'kuiper',
-    label: 'Kuiper Satellites',
+    label: 'Amazon LEO',
     description: 'Amazon LEO · ~590-630 km',
-    tooltip: 'Amazon\'s Project Kuiper aims to deploy over 3,200 satellites to deliver broadband internet globally, competing directly with Starlink in the low Earth orbit market.',
+    tooltip: 'Amazon\'s LEO constellation aims to deploy over 3,200 satellites to deliver broadband internet globally, competing directly with Starlink in the low Earth orbit market.',
   },
   {
     id: 'geoSats',

@@ -54,7 +54,7 @@ const SOURCES = [
     category: 'SATELLITES — ORBITAL DATA',
     items: [
       { name: 'CelesTrak — TLE Data (Starlink, OneWeb, GEO, ISS)', url: 'https://celestrak.org' },
-      { name: 'Amazon Project Kuiper — FCC Filings', url: 'https://www.fcc.gov' },
+      { name: 'Amazon LEO — FCC Filings', url: 'https://www.fcc.gov' },
     ],
   },
   {
