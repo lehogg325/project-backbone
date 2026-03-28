@@ -1,0 +1,34 @@
+name: Refresh TLE Data
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC — well within the 48-hour LEO freshness window
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch latest TLE data
+        run: python3 scripts/fetch_satellite_data.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/starlink-tle.json public/oneweb-tle.json \
+                  public/geo-commsats-tle.json public/iss-tle.json \
+                  public/kuiper-tle.json public/ground-stations.geojson
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: refresh TLE data $(date -u +%Y-%m-%d)"
+          git push

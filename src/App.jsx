@@ -999,7 +999,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
           starlinkCount={starlink?.count ?? null}
           onewebCount={oneweb?.count ?? null}
           kuiperCount={kuiper?.count ?? null}
-          geoSatCount={geoData.length || null}
+          geoSatCount={geo != null ? geoData.length : null}
         />
       )}
       {!isMobile && (
@@ -1140,7 +1140,7 @@ const SAT_LAYERS = new Set(['iss', 'starlink-sats', 'oneweb-sats', 'kuiper-sats'
               starlinkCount={starlink?.count ?? null}
               onewebCount={oneweb?.count ?? null}
               kuiperCount={kuiper?.count ?? null}
-              geoSatCount={geoData.length || null}
+              geoSatCount={geo != null ? geoData.length : null}
             />
           )}
           {mobilePanel === 'layers' && (
