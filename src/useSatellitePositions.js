@@ -99,7 +99,7 @@ function propagateGroup(group, date) {
 
   for (let i = 0; i < satrecs.length; i++) {
     const pv = sat.propagate(satrecs[i], date);
-    if (!pv.position) continue;                         // bad TLE / re-entered
+    if (!pv?.position) continue;                        // bad TLE / re-entered / null return
 
     const geo = sat.eciToGeodetic(pv.position, gmst);
     const lat  = sat.radiansToDegrees(geo.latitude);
